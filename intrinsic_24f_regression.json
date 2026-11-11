@@ -1,0 +1,15 @@
+[
+  {
+    "status": "DEPRECIATION_ONLY_PROXY",
+    "value": 21136000000,
+    "sources": [
+      "Depreciation"
+    ],
+    "dcf_eligible_as_verified": false,
+    "ticker": "GOOGL",
+    "fiscal_end": "2025-12-31",
+    "legacy_dashboard": "GOOGL proxy DCF: reported depreciation only, AR-AP partial NWC",
+    "universal_24e": "MISSING_DATA due to full D&A requirement",
+    "conclusion": "Legacy scenario can run with a disclosed proxy; it is not evidence of full D&A validation."
+  }
+]

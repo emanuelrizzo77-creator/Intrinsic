@@ -1,0 +1,12 @@
+ticker,company,cik,sic,model,latest_year,periods,status,missing,shares_date,warnings
+KO,COCA COLA CO,21344,2080,fcff,2025-12-31,5,PROVISIONAL_SCENARIO_ONLY,,2026-02-18,Partial NWC; WACC and lease bridge not independently validated
+PEP,PEPSICO INC,77476,2080,fcff,2025-12-27,5,MISSING_DATA,Net debt (cash-only); Delta partial NWC,2026-01-23,Partial NWC; WACC and lease bridge not independently validated
+WMT,Walmart Inc.,104169,5331,fcff,2026-01-31,5,MISSING_DATA,D&A verified,2026-03-11,Partial NWC; WACC and lease bridge not independently validated
+NKE,"NIKE, Inc.",320187,3021,fcff,2026-05-31,5,MISSING_DATA,EBIT; Shares outstanding; Delta partial NWC,,Partial NWC; WACC and lease bridge not independently validated
+MCD,McDONALD’S CORPORATION,63908,5812,fcff,2025-12-31,5,MISSING_DATA,Effective tax rate; Delta partial NWC,2026-01-31,Partial NWC; WACC and lease bridge not independently validated
+CAT,CATERPILLAR INC,18230,3531,fcff,2025-12-31,5,MISSING_DATA,Net debt (cash-only); Shares outstanding,,Partial NWC; WACC and lease bridge not independently validated
+MSFT,MICROSOFT CORP,789019,7372,fcff,2026-06-30,5,PROVISIONAL_SCENARIO_ONLY,,2026-07-23,Partial NWC; WACC and lease bridge not independently validated
+AAPL,Apple Inc.,320193,3571,fcff,2026-09-26,5,PROVISIONAL_SCENARIO_ONLY,,2026-10-23,Partial NWC; WACC and lease bridge not independently validated
+NVDA,NVIDIA CORP,1045810,3674,fcff,2026-01-25,5,PROVISIONAL_SCENARIO_ONLY,,2026-02-20,Partial NWC; WACC and lease bridge not independently validated
+GOOGL,Alphabet Inc.,1652044,7370,fcff,2025-12-31,5,MISSING_DATA,D&A verified; Shares outstanding; Delta partial NWC,,Partial NWC; WACC and lease bridge not independently validated
+JPM,JPMORGAN CHASE & CO,19617,6021,bank_equity,2025-12-31,5,UNSUPPORTED_SECTOR,EBIT; D&A verified; CapEx; Net debt (cash-only); Delta partial NWC,2026-01-31,Partial NWC; WACC and lease bridge not independently validated

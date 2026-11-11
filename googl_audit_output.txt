@@ -1,0 +1,71 @@
+Conectando con SEC EDGAR: GOOGL (CIK 0001652044)...
+Empresa: Alphabet Inc.
+
+ALPHABET — RAW ANNUAL TABLE (USD B)
+Revenue {2021: 257.637, 2022: 282.836, 2023: 307.394, 2024: 350.018, 2025: 402.836}
+EBIT {2021: 78.714, 2022: 74.842, 2023: 84.293, 2024: 112.39, 2025: 129.039}
+Depreciation {2021: 10.273, 2022: 13.475, 2023: 11.946, 2024: 15.311, 2025: 21.136}
+Amortization {}
+CapEx {2021: 24.64, 2022: 31.485, 2023: 32.251, 2024: 52.535, 2025: 91.447}
+
+ALPHABET — SEC TAG AUDIT (10-K, 2022 onwards)
+
+D&A candidates (inspect scope and overlap)
+  DepreciationDepletionAndAmortization: MISSING
+  DepreciationDepletionAndAmortizationPropertyPlantAndEquipment: MISSING
+  DepreciationAmortizationAndAccretionNet: MISSING
+  Depreciation: 2025-12-31 | 21.136 B | duration | filed 2026-02-05
+  Depreciation: 2024-12-31 | 15.311 B | duration | filed 2026-02-05
+  Depreciation: 2023-12-31 | 11.946 B | duration | filed 2026-02-05
+  Depreciation: 2022-12-31 | 13.475 B | duration | filed 2025-02-05
+  AmortizationOfIntangibleAssets: MISSING
+  DepreciationAndAmortizationInCashFlowStatement: MISSING
+
+Working capital (instant balance)
+  AccountsReceivableNetCurrent: 2025-12-31 | 62.886 B | instant | filed 2026-02-05
+  AccountsReceivableNetCurrent: 2024-12-31 | 52.340 B | instant | filed 2026-02-05
+  AccountsReceivableNetCurrent: 2023-12-31 | 47.964 B | instant | filed 2025-02-05
+  AccountsReceivableNetCurrent: 2022-12-31 | 40.258 B | instant | filed 2024-01-31
+  AccountsNotesAndOtherReceivablesNetCurrent: MISSING
+  InventoryNet: 2022-12-31 | 2.670 B | instant | filed 2023-02-03
+  AccountsPayableCurrent: 2025-12-31 | 12.200 B | instant | filed 2026-02-05
+  AccountsPayableCurrent: 2024-12-31 | 7.987 B | instant | filed 2026-02-05
+  AccountsPayableCurrent: 2023-12-31 | 7.493 B | instant | filed 2025-02-05
+  AccountsPayableCurrent: 2022-12-31 | 5.128 B | instant | filed 2024-01-31
+  OtherAssetsCurrent: 2025-12-31 | 16.309 B | instant | filed 2026-02-05
+  OtherAssetsCurrent: 2024-12-31 | 15.714 B | instant | filed 2026-02-05
+  OtherAssetsCurrent: 2023-12-31 | 12.650 B | instant | filed 2025-02-05
+  OtherAssetsCurrent: 2022-12-31 | 10.775 B | instant | filed 2024-01-31
+  OtherLiabilitiesCurrent: MISSING
+
+Cash-flow working-capital changes (duration; not balance)
+  IncreaseDecreaseInAccountsReceivable: 2025-12-31 | 8.779 B | duration | filed 2026-02-05
+  IncreaseDecreaseInAccountsReceivable: 2024-12-31 | 5.891 B | duration | filed 2026-02-05
+  IncreaseDecreaseInAccountsReceivable: 2023-12-31 | 7.833 B | duration | filed 2026-02-05
+  IncreaseDecreaseInAccountsReceivable: 2022-12-31 | 2.317 B | duration | filed 2025-02-05
+  IncreaseDecreaseInInventories: MISSING
+  IncreaseDecreaseInAccountsPayable: 2025-12-31 | 0.907 B | duration | filed 2026-02-05
+  IncreaseDecreaseInAccountsPayable: 2024-12-31 | 0.359 B | duration | filed 2026-02-05
+  IncreaseDecreaseInAccountsPayable: 2023-12-31 | 0.664 B | duration | filed 2026-02-05
+  IncreaseDecreaseInAccountsPayable: 2022-12-31 | 0.707 B | duration | filed 2025-02-05
+  IncreaseDecreaseInOtherOperatingAssets: 2025-12-31 | 4.542 B | duration | filed 2026-02-05
+  IncreaseDecreaseInOtherOperatingAssets: 2024-12-31 | 1.397 B | duration | filed 2026-02-05
+  IncreaseDecreaseInOtherOperatingAssets: 2023-12-31 | 2.143 B | duration | filed 2026-02-05
+  IncreaseDecreaseInOtherOperatingAssets: 2022-12-31 | 5.046 B | duration | filed 2025-02-05
+  IncreaseDecreaseInOtherOperatingLiabilities: MISSING
+
+ALPHABET — CURRENT RATIOS
+Conectando con SEC EDGAR: GOOGL (CIK 0001652044)...
+Empresa: Alphabet Inc.
+growth {'median': 0.1386624332290156, 'years': [2023, 2024, 2025], 'observations': 3, 'status': 'AVAILABLE'}
+ebit_margin {'median': 0.32032638592380025, 'years': [2023, 2024, 2025], 'observations': 3, 'status': 'AVAILABLE'}
+da_ratio {'median': None, 'years': [], 'observations': 0, 'status': 'MISSING_RECENT'}
+capex_ratio {'median': 0.15009228096840735, 'years': [2023, 2024, 2025], 'observations': 3, 'status': 'AVAILABLE'}
+nwc_ratio {'median': 0.13345767689194016, 'years': [2022], 'observations': 1, 'status': 'LIMITED'}
+
+WARNINGS
+- GOOGL: complete D&A and original AR+Inventory-AP NWC unavailable; do not infer zero
+- da_ratio: MISSING_RECENT (0 recent observation(s))
+- nwc_ratio: LIMITED (1 recent observation(s))
+
+Diagnostic only: no DCF inputs changed.
