@@ -1,0 +1,105 @@
+{
+ "source": "Aswath Damodaran, NYU Stern data (January 2026 update)",
+ "implied_erp": {
+  "value": 0.0423,
+  "as_of": "2026-01-01",
+  "note": "Implied ERP (FCFE) for the S&P 500 at the start of 2026, histimpl dataset"
+ },
+ "treasury_10y_fallback": {
+  "value": 0.0418,
+  "as_of": "2025-12-31",
+  "note": "10-year T.Bond rate at end of 2025, histimpl dataset; used only if live data fails"
+ },
+ "synthetic_rating_large_nonfinancial": [
+  {
+   "coverage_above": -100000.0,
+   "coverage_up_to": 0.199999,
+   "rating": "D2/D",
+   "spread": 0.19
+  },
+  {
+   "coverage_above": 0.2,
+   "coverage_up_to": 0.649999,
+   "rating": "C2/C",
+   "spread": 0.16
+  },
+  {
+   "coverage_above": 0.65,
+   "coverage_up_to": 0.799999,
+   "rating": "Ca2/CC",
+   "spread": 0.1261
+  },
+  {
+   "coverage_above": 0.8,
+   "coverage_up_to": 1.249999,
+   "rating": "Caa/CCC",
+   "spread": 0.0885
+  },
+  {
+   "coverage_above": 1.25,
+   "coverage_up_to": 1.499999,
+   "rating": "B3/B-",
+   "spread": 0.0509
+  },
+  {
+   "coverage_above": 1.5,
+   "coverage_up_to": 1.749999,
+   "rating": "B2/B",
+   "spread": 0.0321
+  },
+  {
+   "coverage_above": 1.75,
+   "coverage_up_to": 1.999999,
+   "rating": "B1/B+",
+   "spread": 0.0275
+  },
+  {
+   "coverage_above": 2.0,
+   "coverage_up_to": 2.2499999,
+   "rating": "Ba2/BB",
+   "spread": 0.0184
+  },
+  {
+   "coverage_above": 2.25,
+   "coverage_up_to": 2.49999,
+   "rating": "Ba1/BB+",
+   "spread": 0.0138
+  },
+  {
+   "coverage_above": 2.5,
+   "coverage_up_to": 2.999999,
+   "rating": "Baa2/BBB",
+   "spread": 0.0111
+  },
+  {
+   "coverage_above": 3.0,
+   "coverage_up_to": 4.249999,
+   "rating": "A3/A-",
+   "spread": 0.0089
+  },
+  {
+   "coverage_above": 4.25,
+   "coverage_up_to": 5.499999,
+   "rating": "A2/A",
+   "spread": 0.0078000000000000005
+  },
+  {
+   "coverage_above": 5.5,
+   "coverage_up_to": 6.499999,
+   "rating": "A1/A+",
+   "spread": 0.006999999999999999
+  },
+  {
+   "coverage_above": 6.5,
+   "coverage_up_to": 8.499999,
+   "rating": "Aa2/AA",
+   "spread": 0.0055000000000000005
+  },
+  {
+   "coverage_above": 8.5,
+   "coverage_up_to": 100000.0,
+   "rating": "Aaa/AAA",
+   "spread": 0.004
+  }
+ ]
+}

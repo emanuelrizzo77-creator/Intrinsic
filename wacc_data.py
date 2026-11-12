@@ -8,7 +8,64 @@ from market_data import (
     obtener_deuda_en_fecha,
 )
 
-from financial_engine import descargar_datos
+from financial_engine import descargar_datos, resolver_cik
+from industry_beta_27 import bottom_up_beta
+
+
+INTEREST_TAGS = ["InterestExpense", "InterestExpenseNonoperating", "InterestAndDebtExpense", "InterestExpenseDebt"]
+
+
+def interest_coverage(datos_sec):
+    """Latest fiscal year EBIT / interest expense from 10-K facts, or None.
+
+    Returns {'coverage', 'ebit', 'interest', 'fiscal_end', 'interest_tag'}; coverage is inf when
+    the company reports operating income but zero interest expense."""
+    from financial_engine import _registros_anuales
+
+    def latest(tags):
+        best = {}
+        for prio, tag, reg, fin, filed in _registros_anuales(datos_sec, tags):
+            if reg.get("fp") not in (None, "FY"):
+                continue
+            key = fin.isoformat()
+            cand = (prio, -filed.toordinal())
+            if key not in best or cand < best[key][0]:
+                best[key] = (cand, float(reg["val"]), tag)
+        return {k: (v[1], v[2]) for k, v in best.items()}
+
+    ebit, interest = latest(["OperatingIncomeLoss"]), latest(INTEREST_TAGS)
+    common = sorted(set(ebit) & set(interest))
+    if not common:
+        return None
+    end = common[-1]
+    from datetime import date
+    if date.today().year - int(end[:4]) > 2:
+        return None                      # tags stopped being reported: too old to describe today's debt
+    e, (i, tag) = ebit[end][0], interest[end]
+    if i < 0:
+        return None
+    return {"coverage": float("inf") if i == 0 else e / i, "ebit": e, "interest": i,
+            "fiscal_end": end, "interest_tag": tag}
+
+
+def _with_bottom_up_beta(result, datos_sec=None):
+    """Add the industry (bottom-up) beta and interest coverage; the regression beta stays as a fallback."""
+    try:
+        result["interest_coverage"] = interest_coverage(datos_sec) if datos_sec else None
+    except Exception:
+        result["interest_coverage"] = None
+    try:
+        from sec_annual_27 import submissions_cached
+        sic = submissions_cached(int(resolver_cik(result["ticker"]))).get("sic")
+        bu = bottom_up_beta(sic, market_equity=result["market_equity"], total_debt=result["total_debt"])
+    except Exception as exc:  # SEC profile unavailable: keep regression beta
+        bu = {"beta": None, "reason": f"SIC lookup failed: {exc}"}
+    result["beta_bottom_up"] = bu
+    if bu.get("beta") is not None:
+        result["beta_default"], result["beta_default_source"] = bu["beta"], "bottom_up"
+    else:
+        result["beta_default"], result["beta_default_source"] = result["beta_adjusted"], "regression_blume"
+    return result
 
 
 def calcular_kd_historico(datos_sec, deuda_inicio, deuda_final, fecha_final):
@@ -82,14 +139,14 @@ def obtener_datos_wacc(ticker="MSFT"):
         br = load_inputs(ticker)["bridge"]
         if br.get("total_debt") is None:
             raise ValueError("Missing SEC debt data. Automatic WACC cannot be calculated.")
-        return {
+        return _with_bottom_up_beta({
             "ticker": ticker, "beta": float(beta), "beta_adjusted": 0.67 * float(beta) + 0.33,
             "market_equity": float(market_cap), "total_debt": float(br["total_debt"]),
             "market_price": mercado.get("price"), "shares": mercado.get("shares"),
             "market_date": mercado.get("retrieved_at"), "debt_date": br["balance_date"],
             "debt_source": "Model 27 bridge: " + str(br.get("debt_source")),
             "currency": mercado["currency"], "historical_kd": None,
-        }
+        }, datos_sec)
 
     if deuda_largo["date"] != deuda_corto["date"]:
         raise ValueError(
@@ -142,7 +199,7 @@ def obtener_datos_wacc(ticker="MSFT"):
                 )
 
 
-    return {
+    return _with_bottom_up_beta({
         "ticker": ticker,
         "beta": float(beta),
         "beta_adjusted": 0.67 * float(beta) + 0.33,
@@ -154,7 +211,7 @@ def obtener_datos_wacc(ticker="MSFT"):
         "debt_date": deuda_largo["date"],
         "currency": mercado["currency"],
         "historical_kd": kd_historico,
-    }
+    }, datos_sec)
 
 
 if __name__ == "__main__":

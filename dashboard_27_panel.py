@@ -14,6 +14,7 @@ from html import escape
 
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 import streamlit as st
 
 import driver_forecast_27 as dm
@@ -24,7 +25,32 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCENARIOS = ('conservative', 'base', 'optimistic')
 SOURCE_BADGE = {'data': '🟦 Company data', 'calibrated': '🟩 Calibrated (panel)',
                 'assumption': '🟨 Economic assumption', 'user': '🟥 Your input'}
-COLORS = {'conservative': '#ff6b6b', 'base': '#4da3ff', 'optimistic': '#36c5a0', 'market': '#fbbf24'}
+COLORS = {'conservative': '#F97316', 'base': '#4F46E5', 'optimistic': '#16A34A', 'market': '#18181B'}
+
+# One light chart style for every figure (matches .streamlit/config.toml).
+pio.templates['intrinsic'] = go.layout.Template(pio.templates['plotly_white'])
+pio.templates['intrinsic'].layout.update(
+    font=dict(family='Inter, -apple-system, Segoe UI, sans-serif', size=12, color='#3F3F46'),
+    title=dict(font=dict(size=14, color='#18181B')),
+    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+    colorway=['#4F46E5', '#F97316', '#16A34A', '#A1A1AA'],
+    xaxis=dict(gridcolor='#F0F0F3', linecolor='#E4E4E7', zerolinecolor='#E4E4E7', tickcolor='#E4E4E7'),
+    yaxis=dict(gridcolor='#F0F0F3', linecolor='rgba(0,0,0,0)', zerolinecolor='#E4E4E7'),
+    hoverlabel=dict(bgcolor='#18181B', bordercolor='#18181B', font=dict(color='#FAFAFA', family='Inter, sans-serif')),
+    legend=dict(font=dict(size=12, color='#52525B')),
+    margin=dict(l=10, r=10, t=40, b=10),
+)
+CHART_CONFIG = {'displayModeBar': False}
+
+
+def _chart(fig, title=None, caption=None):
+    """Render a figure inside a bordered card."""
+    with st.container(border=True):
+        if title:
+            st.markdown(f'<div class="intrinsic-dashboard-heading">{escape(title)}</div>', unsafe_allow_html=True)
+        if caption:
+            st.caption(caption)
+        st.plotly_chart(fig, width='stretch', config=CHART_CONFIG)
 
 GLOSSARY = {
     'Intrinsic value': 'Estimated fair value per share: present value of projected free cash flows plus terminal value, '
@@ -101,11 +127,10 @@ def _sidebar_inputs(ticker, probe):
     phi, gT = v['growth_fade'], v['terminal_growth']
     year1 = gT + (v['growth_start'] - gT) * phi        # what the user actually sees for next year
     overrides = {}
-    st.sidebar.divider()
-    st.sidebar.subheader('Your assumptions')
-    st.sidebar.caption('Pre-filled with Model 27 values. Change any number to run your own case; '
+    box = st.sidebar.expander('Forecast assumptions', expanded=False)
+    box.caption('Pre-filled with Model 27 values. Change any number to run your own case; '
                        'changed inputs are labelled "Your input".')
-    if st.sidebar.button('Reset to model values', key=f'm27_reset_{ticker}'):
+    if box.button('Reset to model values', key=f'm27_reset_{ticker}', width='stretch'):
         for k in list(st.session_state):
             if k.startswith(f'm27_in_{ticker}_'):
                 del st.session_state[k]
@@ -125,7 +150,7 @@ def _sidebar_inputs(ticker, probe):
     for key, label, default, help_text in fields:
         if not is_number(default):
             continue
-        val = st.sidebar.number_input(label, value=float(round(default * 100, 2)), step=0.5, help=help_text,
+        val = box.number_input(label, value=float(round(default * 100, 2)), step=0.5, help=help_text,
                                       key=f'm27_in_{ticker}_{key}') / 100
         if abs(val - round(default, 4)) > 1e-6:
             if key == 'year1':
@@ -152,20 +177,16 @@ def _price(res):
 # ------------------------------------------------------------------
 
 def _overview(results, scen, wacc, market_price, market_shares, data):
-    st.markdown('<div class="intrinsic-section-label">01 / VALUATION SNAPSHOT</div>', unsafe_allow_html=True)
-    st.markdown('<div class="intrinsic-dashboard-heading">DCF value vs market price</div>', unsafe_allow_html=True)
-    st.markdown('<div class="intrinsic-dashboard-sub">Model 27 · 10-year FCFF forecast · '
-                f'{scen.capitalize()} scenario selected</div>', unsafe_allow_html=True)
     val = results[scen]['valuation']
     price = val['intrinsic_price']
     upside = (price / market_price - 1) * 100 if market_price else 0.0
     cls = 'positive' if upside >= 0 else 'negative'
     st.markdown(f"""
     <div class="intrinsic-kpi-grid">
-      <div class="intrinsic-kpi primary"><div class="label">INTRINSIC VALUE / SHARE {_help('Intrinsic value')}</div><div class="value">${price:,.2f}</div><div class="foot">{scen.capitalize()} scenario</div></div>
-      <div class="intrinsic-kpi"><div class="label">MARKET PRICE / SHARE {_help('Market price')}</div><div class="value">${market_price:,.2f}</div><div class="foot">Selected market reference</div></div>
-      <div class="intrinsic-kpi"><div class="label">UPSIDE / DOWNSIDE {_help('Upside / downside')}</div><div class="value {cls}">{upside:+.1f}%</div><div class="foot">Not a recommendation</div></div>
-      <div class="intrinsic-kpi"><div class="label">DISCOUNT RATE / WACC {_help('WACC')}</div><div class="value">{wacc * 100:.2f}%</div><div class="foot">Selected capital cost</div></div>
+      <div class="intrinsic-kpi primary"><div class="label">Intrinsic value per share {_help('Intrinsic value')}</div><div class="value">${price:,.2f}</div><div class="foot">{scen.capitalize()} scenario · 10-year DCF</div></div>
+      <div class="intrinsic-kpi"><div class="label">Market price {_help('Market price')}</div><div class="value">${market_price:,.2f}</div><div class="foot">Latest market reference</div></div>
+      <div class="intrinsic-kpi"><div class="label">Upside / downside {_help('Upside / downside')}</div><div class="value {cls}">{'↑' if upside >= 0 else '↓'} {abs(upside):.1f}%</div><div class="foot">Intrinsic value vs market price</div></div>
+      <div class="intrinsic-kpi"><div class="label">Discount rate (WACC) {_help('WACC')}</div><div class="value">{wacc * 100:.2f}%</div><div class="foot">Edit under Assumptions</div></div>
     </div>""", unsafe_allow_html=True)
 
     # DCF range vs market ("football field")
@@ -173,18 +194,22 @@ def _overview(results, scen, wacc, market_price, market_shares, data):
     fig = go.Figure()
     lo, hi = prices['conservative'], prices['optimistic']
     if lo is not None and hi is not None:
-        fig.add_trace(go.Bar(y=['DCF range'], x=[hi - lo], base=[lo], orientation='h', marker_color='#334155',
+        fig.add_trace(go.Bar(y=['DCF range'], x=[hi - lo], base=[lo], orientation='h', marker_color='#E0E7FF',
+                             marker_line_width=0, width=0.5,
                              name='Conservative → optimistic', hovertemplate='$%{base:,.2f} – $%{x:,.2f}<extra></extra>'))
     for s in SCENARIOS:
         if prices[s] is not None:
             fig.add_trace(go.Scatter(y=['DCF range'], x=[prices[s]], mode='markers+text', name=s.capitalize(),
                                      marker=dict(size=16, color=COLORS[s], symbol='diamond'),
-                                     text=[f'${prices[s]:,.0f}'], textposition='top center'))
-    fig.add_vline(x=market_price, line=dict(color=COLORS['market'], width=3, dash='dash'),
+                                     text=[f'${prices[s]:,.0f}'], textposition='top center',
+                                     textfont=dict(color='#3F3F46')))
+    fig.add_vline(x=market_price, line=dict(color=COLORS['market'], width=2, dash='dot'),
                   annotation_text=f'Market ${market_price:,.2f}', annotation_position='bottom right')
-    fig.update_layout(template='plotly_dark', height=230, margin=dict(l=10, r=10, t=30, b=10),
-                      xaxis_title='USD per share', legend=dict(orientation='h', y=-0.45))
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(template='intrinsic', height=220, margin=dict(l=10, r=10, t=20, b=10),
+                      xaxis_title='USD per share', legend=dict(orientation='h', y=-0.5), bargap=0.4)
+    fig.update_yaxes(showticklabels=False)
+    _chart(fig, 'Valuation range vs market price',
+           'Conservative and optimistic scenarios come from the model\'s measured forecast errors.')
 
     missing = [s for s in SCENARIOS if prices[s] is None]
     if missing:
@@ -196,17 +221,34 @@ def _overview(results, scen, wacc, market_price, market_shares, data):
         lo = lo if lo is not None else min(known)
         hi = hi if hi is not None else max(known)
     if hi is not None and market_price > hi:
+        tone, head = 'above', 'Market price is above the optimistic case'
         verdict = (f'The market price (${market_price:,.2f}) is ABOVE even the optimistic scenario (${hi:,.2f}): '
                    'the market expects more growth, margin or longer-lasting advantages than the model\'s optimistic case.')
     elif lo is not None and market_price < lo:
+        tone, head = 'below', 'Market price is below the conservative case'
         verdict = (f'The market price (${market_price:,.2f}) is BELOW even the conservative scenario (${lo:,.2f}): '
                    'the market is more pessimistic than the model\'s conservative case.')
     else:
+        tone, head = 'inside', 'Market price is inside the model range'
         verdict = (f'The market price (${market_price:,.2f}) is INSIDE the model\'s range '
                    f'(${lo:,.2f} – ${hi:,.2f}): the market\'s expectations are consistent with the model\'s uncertainty.')
     share = val['terminal_share_of_ev']
-    st.markdown('<div class="intrinsic-insight"><div class="intrinsic-insight-title">VALUATION INSIGHTS</div>'
-                f'<strong>Market comparison:</strong> {verdict}<br>'
+    drv = results[scen]['assumptions']['drivers']
+    m0, mT = drv['margin_start']['value'], drv['margin_target']['value']
+    if is_number(m0) and is_number(mT):
+        gap = mT - m0
+        move = ('falls' if gap < -0.005 else 'rises' if gap > 0.005 else 'stays')
+        margin_line = (f'<strong>Biggest assumption — operating margin:</strong> the forecast assumes it {move} from '
+                       f'{m0:.1%} (latest year) {"to" if move != "stays" else "near"} {mT:.1%} in the long run '
+                       f'({escape(drv["margin_target"]["note"])}). '
+                       + ('Tested out of sample, this anchor beat recent-level alternatives on average, but a company '
+                          'whose business changed for good would be undervalued. ' if gap < -0.05 else '')
+                       + 'Change it under <em>Forecast assumptions</em> to test your own view.<br>')
+    else:
+        margin_line = ''
+    st.markdown('<div class="intrinsic-insight"><div class="intrinsic-insight-title">What this means</div>'
+                f'<div class="ix-verdict {tone}"><div><strong>{head}.</strong> {verdict}</div></div>'
+                + margin_line +
                 f'<strong>Terminal value:</strong> {share:.0%} of enterprise value comes from cash flows after year 10.<br>'
                 '<strong>How to read the range:</strong> conservative/optimistic come from the model\'s measured '
                 'forecast errors (20th/80th percentile), not from arbitrary ±%.</div>', unsafe_allow_html=True)
@@ -220,7 +262,7 @@ def _overview(results, scen, wacc, market_price, market_shares, data):
 
 
 def _forecast(results, scen, ticker):
-    st.subheader('Financial Forecast')
+    st.markdown('<div class="intrinsic-dashboard-heading">Financial forecast</div>', unsafe_allow_html=True)
     _glossary(['Revenue growth', 'EBIT', 'NOPAT', 'D&A', 'CapEx', 'Change in NWC', 'FCFF', 'ROIC', 'Reinvestment rate'])
     st.caption(f'{scen.capitalize()} scenario · years 1–5 are the forecast period; years 6–10 complete the fade '
                'to steady state before the terminal value. Figures in USD millions.')
@@ -238,12 +280,17 @@ def _forecast(results, scen, ticker):
         'FCFF': [r['fcff'] / 1e6 for r in rows],
         'ROIC %': [r['roic'] * 100 if r['roic'] is not None else None for r in rows],
     })
-    st.dataframe(df.round(1), hide_index=True, use_container_width=True)
+    money = ['Revenue', 'EBIT', 'NOPAT', 'D&A', 'CapEx', 'Change in NWC', 'FCFF']
+    cfg = {c: st.column_config.NumberColumn(c, format='localized') for c in money}
+    cfg.update({c: st.column_config.NumberColumn(c, format='%.1f%%') for c in ('Growth %', 'EBIT margin %', 'ROIC %')})
+    cfg['Fiscal Year'] = st.column_config.NumberColumn('Fiscal year', format='%d')
+    shown = df.copy()
+    shown[money] = shown[money].round(0)
+    st.dataframe(shown.round(1), hide_index=True, width='stretch', column_config=cfg)
     st.download_button('Download forecast CSV', df.to_csv(index=False),
                        file_name=f'intrinsic_{ticker.lower()}_forecast_{scen}.csv', mime='text/csv')
     left, right = st.columns(2)
     with left:
-        st.subheader('Revenue Projection')
         fig = go.Figure()
         for s in SCENARIOS:
             p = results[s].get('projection')
@@ -251,29 +298,29 @@ def _forecast(results, scen, ticker):
                 fig.add_trace(go.Scatter(x=[r['year'] for r in p['rows']], y=[r['revenue'] / 1e9 for r in p['rows']],
                                          mode='lines+markers', name=s.capitalize(),
                                          line=dict(color=COLORS[s], width=4 if s == scen else 2)))
-        fig.update_layout(template='plotly_dark', xaxis_title='Fiscal Year', yaxis_title='USD Billions', height=350,
-                          legend=dict(orientation='h', y=-0.25))
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(template='intrinsic', yaxis_title='USD billions', height=330,
+                          legend=dict(orientation='h', y=-0.2))
+        _chart(fig, 'Revenue by scenario')
     with right:
-        st.subheader('Free Cash Flow Forecast')
         fig = go.Figure(go.Bar(x=[r['year'] for r in rows], y=[r['fcff'] / 1e9 for r in rows],
                                marker_color=COLORS[scen], name='FCFF'))
-        fig.update_layout(template='plotly_dark', xaxis_title='Fiscal Year', yaxis_title='USD Billions', height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_traces(marker_line_width=0)
+        fig.update_layout(template='intrinsic', yaxis_title='USD billions', height=330, bargap=0.35)
+        _chart(fig, 'Free cash flow to the firm')
 
 
 def _waterfall(labels, values, measures, title):
     fig = go.Figure(go.Waterfall(
         orientation='v', measure=measures, x=labels, y=values,
         text=[f'${abs(v):,.1f} B' for v in values], textposition='outside',
-        connector={'line': {'color': '#64748b'}}, increasing={'marker': {'color': '#36c5a0'}},
-        decreasing={'marker': {'color': '#ff6b6b'}}, totals={'marker': {'color': '#4da3ff'}}))
-    fig.update_layout(template='plotly_dark', title=title, yaxis_title='USD Billions', height=460, showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
+        connector={'line': {'color': '#D4D4D8'}}, increasing={'marker': {'color': '#86EFAC'}},
+        decreasing={'marker': {'color': '#FCA5A5'}}, totals={'marker': {'color': '#4F46E5'}}))
+    fig.update_layout(template='intrinsic', yaxis_title='USD billions', height=440, showlegend=False)
+    _chart(fig, title)
 
 
 def _valuation(results, scen, data):
-    st.subheader('DCF Valuation Breakdown')
+    st.markdown('<div class="intrinsic-dashboard-heading">DCF valuation breakdown</div>', unsafe_allow_html=True)
     _glossary(['PV of FCFF', 'Terminal value', 'Enterprise value', 'Net debt', 'Equity value', 'Intrinsic value'])
     res, br = results[scen], data['bridge']
     v, t = res['valuation'], res['valuation']['terminal']
@@ -283,17 +330,15 @@ def _valuation(results, scen, data):
         'Value': [f"${v['pv_fcff'] / 1e9:,.2f} B", f"${v['pv_terminal'] / 1e9:,.2f} B",
                   f"${v['enterprise_value'] / 1e9:,.2f} B", f"${br['net_debt'] / 1e9:,.2f} B",
                   f"${v['equity_value'] / 1e9:,.2f} B", f"{br['shares']:,.0f}", f"${v['intrinsic_price']:,.2f}"],
-    }), hide_index=True, use_container_width=True)
+    }), hide_index=True, width='stretch')
 
-    st.subheader('How the value builds up')
     st.caption('Each bar is the present value of one year\'s free cash flow; the last adds the terminal value.')
     rows = res['projection']['rows']
     pv = v['pv_fcff_by_year']
     _waterfall([str(r['year']) for r in rows] + ['Terminal value', 'Enterprise value'],
                [x / 1e9 for x in pv] + [v['pv_terminal'] / 1e9, v['enterprise_value'] / 1e9],
-               ['relative'] * (len(pv) + 1) + ['total'], 'Present value of cash flows → Enterprise value')
+               ['relative'] * (len(pv) + 1) + ['total'], 'How the value builds up: present value of each year → enterprise value')
 
-    st.subheader('Enterprise to Equity Bridge')
     labels, values, measures = ['Enterprise Value'], [v['enterprise_value'] / 1e9], ['absolute']
     labels.append('Total debt (incl. finance leases)'); values.append(-(br['total_debt'] or 0) / 1e9); measures.append('relative')
     labels.append('Cash & equivalents'); values.append((br['cash'] or 0) / 1e9); measures.append('relative')
@@ -301,7 +346,7 @@ def _valuation(results, scen, data):
     for k, x in br.get('non_operating_assets', {}).items():
         labels.append(k); values.append(x / 1e9); measures.append('relative')
     labels.append('Equity Value'); values.append(v['equity_value'] / 1e9); measures.append('total')
-    _waterfall(labels, values, measures, 'Enterprise Value to Equity Value')
+    _waterfall(labels, values, measures, 'From enterprise value to equity value')
     st.caption(f"Balance date {br['balance_date']} · Debt: {br['debt_source']} · Non-operating investments at book "
                'value (verify their income is excluded from EBIT).')
 
@@ -313,7 +358,7 @@ def _valuation(results, scen, data):
 
 
 def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
-    st.subheader('WACC × Terminal Growth Sensitivity')
+    st.markdown('<div class="intrinsic-dashboard-heading">WACC × terminal growth sensitivity</div>', unsafe_allow_html=True)
     _glossary(['WACC', 'Terminal growth', 'Sensitivity matrix'])
     st.caption(f'{scen.capitalize()} scenario · intrinsic value per share · cells show upside vs market price')
     waccs = [wacc + d for d in (-0.02, -0.01, 0, 0.01, 0.02)]
@@ -333,11 +378,12 @@ def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
     text = [[(f'${x:,.0f}<br>{(x / market_price - 1) * 100:+.0f}%' if not math.isnan(x) else 'N/A') for x in r]
             for r in matrix]
     fig = go.Figure(go.Heatmap(z=matrix, x=[f'{x * 100:.2f}%' for x in growths], y=[f'{w * 100:.2f}%' for w in waccs],
-                               colorscale='RdYlGn', zmid=market_price, text=text, texttemplate='%{text}',
+                               colorscale=[[0, '#FCA5A5'], [0.5, '#FAFAFA'], [1, '#86EFAC']], zmid=market_price,
+                               text=text, texttemplate='%{text}', textfont=dict(color='#18181B'), xgap=3, ygap=3,
                                hovertemplate='Growth %{x}<br>WACC %{y}<br>%{text}<extra></extra>',
                                colorbar=dict(title='$/share')))
-    fig.update_layout(template='plotly_dark', xaxis_title='Terminal Growth', yaxis_title='WACC', height=440)
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(template='intrinsic', xaxis_title='Terminal growth', yaxis_title='WACC', height=440)
+    _chart(fig)
     st.caption(f'Colour midpoint = market price (${market_price:,.2f}): green cells are above the market, red below.')
     export = pd.DataFrame(matrix, index=[f'{w * 100:.2f}%' for w in waccs], columns=[f'{x * 100:.2f}%' for x in growths])
     export.index.name = 'WACC / Terminal Growth'
@@ -346,7 +392,7 @@ def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
 
 
 def _model_data(results, scen, data):
-    st.subheader('Model & Data')
+    st.markdown('<div class="intrinsic-dashboard-heading">Model & data</div>', unsafe_allow_html=True)
     note = _validation_note()
     if note:
         st.success(f'Revenue and EBIT-margin forecasts passed {note[0]}/{note[1]} pre-registered out-of-sample '
@@ -354,7 +400,7 @@ def _model_data(results, scen, data):
     st.info('What is NOT validated: CapEx, D&A and working-capital paths (consistent by construction, not tested '
             'as forecasts) and the final valuation. Use the range, not a single number.')
     a = results[scen]['assumptions']
-    st.markdown('#### Assumptions and where each comes from')
+    st.markdown('<div class="intrinsic-dashboard-heading" style="margin-top:18px">Assumptions and where each comes from</div>', unsafe_allow_html=True)
     rows = []
     for k, x in a['drivers'].items():
         val = x['value']
@@ -366,8 +412,8 @@ def _model_data(results, scen, data):
             shown = str(val)
         rows.append({'Driver': k, 'Value': shown, 'Source': SOURCE_BADGE.get(x['source'], x['source']),
                      'Explanation': x['note']})
-    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
-    st.markdown('#### Data quality and consistency checks')
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width='stretch')
+    st.markdown('<div class="intrinsic-dashboard-heading" style="margin-top:18px">Data quality and consistency checks</div>', unsafe_allow_html=True)
     for b in a['blockers']:
         st.error(b)
     for d in a['degradations']:
@@ -411,8 +457,16 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         for b in probe['blockers']:
             st.write('• ' + b)
         return
-    scen = st.sidebar.radio('Scenario', SCENARIOS, index=1, format_func=str.capitalize,
-                            key=f'm27_scenario_{ticker}', help=GLOSSARY['Scenario'])
+    nav, pick = st.columns([3, 2], vertical_alignment='bottom')
+    with nav:
+        section = st.segmented_control('Dashboard section',
+                                       options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Model & Data'],
+                                       default='Overview', key='intrinsic_section_27',
+                                       label_visibility='collapsed') or 'Overview'
+    with pick:
+        scen = st.segmented_control('Scenario', SCENARIOS, default='base', format_func=str.capitalize,
+                                    key=f'm27_scenario_{ticker}', help=GLOSSARY['Scenario'],
+                                    label_visibility='collapsed') or 'base'
     overrides = _sidebar_inputs(ticker, probe)
     results = _run_all(data, wacc, terminal_growth, overrides)
     if 'valuation' not in results[scen]:
@@ -426,9 +480,6 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
                  'fixed assets per $ of revenue', 'nwc_ratio_target': 'working capital', 'tax_terminal': 'tax rate'}
         st.info('You are viewing YOUR case: ' + ', '.join(names.get(k, k) for k in overrides)
                 + ' changed from model values. Use "Reset to model values" in the sidebar to go back.')
-    section = st.segmented_control('Dashboard section',
-                                   options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Model & Data'],
-                                   default='Overview', key='intrinsic_section_27', label_visibility='collapsed')
     if section == 'Forecast':
         _forecast(results, scen, ticker)
     elif section == 'Valuation':
@@ -439,4 +490,5 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         _model_data(results, scen, data)
     else:
         _overview(results, scen, wacc, market_price, market_shares, data)
-    st.caption('Intrinsic · Data: SEC EDGAR + market reference · Model 27 · research tool, not investment advice')
+    st.markdown('<div class="ix-footer">Intrinsic · Data: SEC EDGAR and Yahoo Finance · Model 27 · '
+                'research tool, not investment advice</div>', unsafe_allow_html=True)
