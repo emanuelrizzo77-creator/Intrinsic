@@ -184,14 +184,20 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
 
     def calibrated(key):
         table = cal.get(key, {})
-        entry = table.get(bucket) or table.get('all')
-        return entry.get('phi') if isinstance(entry, dict) else None
+        if isinstance(table.get(bucket), dict):
+            return table[bucket].get('phi'), bucket
+        if isinstance(table.get('all'), dict):
+            return table['all'].get('phi'), f"all (bucket {bucket} had too few observations)"
+        return None, None
 
+    high = cal.get('growth_fade_high')
     for name, key in (('growth_fade', 'growth_fade'), ('margin_fade', 'margin_fade'),
                       ('intensity_fade', 'intensity_fade')):
-        phi = calibrated(key)
+        phi, used = calibrated(key)
+        if name == 'growth_fade' and isinstance(high, dict) and is_number(g0) and g0 > high.get('threshold', 0.25):
+            phi, used = high['phi'], f"high-growth panel (start growth > {high.get('threshold', 0.25):.0%})"
         if phi is not None:
-            d[name] = _drv(phi, 'calibrated', f'panel estimate, size bucket {bucket}')
+            d[name] = _drv(phi, 'calibrated', f'panel estimate, size bucket {used}')
         else:
             d[name] = _drv(PROVISIONAL[name], 'assumption', 'PROVISIONAL: run calibrate_fade_27.py to estimate')
     if not cal:
@@ -202,10 +208,13 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         blockers.append('Latest EBIT margin unavailable')
     elif m0 <= 0:
         degraded.append('Negative latest EBIT margin: path to profitability relies on margin target')
-    m_star = _med(diag['margins'])
+    # Anchor = median of years BEFORE the latest one, the same definition used to
+    # calibrate the fade weight (calibrate_fade_27.py); falls back to all years.
+    prior = lambda xs: xs[:-1] if len(xs) >= 4 else xs
+    m_star = _med(prior(diag['margins']))
     d['margin_start'] = _drv(m0, 'data', 'latest fiscal year')
     d['margin_target'] = _drv(m_star, 'data',
-                              f"company median of {len(diag['margins'])} years; no industry shrinkage yet")
+                              f"company median of {len(prior(diag['margins']))} prior years; no industry shrinkage yet")
 
     tax0 = last.get('Effective tax rate')
     if is_number(tax0):
@@ -224,8 +233,8 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     d['net_ppe0'] = _drv(ppe0, 'data')
     d['intensity_start'] = _drv(ppe0 / rev0 if ppe0 is not None and rev0 else None, 'data',
                                 'Net PP&E / revenue, latest')
-    d['intensity_target'] = _drv(_med(diag['ppe_intensity']), 'data',
-                                 'company median Net PP&E / revenue; override for investment cycles')
+    d['intensity_target'] = _drv(_med(prior(diag['ppe_intensity'])), 'data',
+                                 'company median Net PP&E / revenue (prior years); override for investment cycles')
 
     delta = _med(diag['dep_rates'])
     if delta is None:

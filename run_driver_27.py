@@ -42,14 +42,28 @@ def load_inputs(ticker, last_n=10):
     history = dm.merge_history(hist['rows'], capital)
     bal = normalize_balance_23b(payload, ends[-1:])[-1]
     cap = capital[-1]
-    bridge = {'total_debt': bal.get('Total debt'), 'cash': cap.get('Cash'),
+    total_debt, debt_source = bal.get('Total debt'), 'SEC 23B'
+    if total_debt is None:
+        from sec_annual_27 import annual_points
+        pts = lambda tags: annual_points(payload, tags).get(ends[-1], {}).get('value')
+        carrying = pts(('DebtInstrumentCarryingAmount',))
+        cur, nonc = pts(('DebtCurrent', 'LongTermDebtCurrent')), pts(('LongTermDebtNoncurrent',))
+        if is_number(cur) and is_number(nonc):
+            total_debt, debt_source = cur + nonc, 'derived: current + noncurrent debt'
+        elif is_number(carrying):
+            total_debt, debt_source = carrying, 'DebtInstrumentCarryingAmount (VERIFY: excludes leases)'
+    nonop = {k: cap.get(k) for k in ('Equity-method investments', 'Long-term marketable securities')
+             if is_number(cap.get(k))}
+    bridge = {'total_debt': total_debt, 'debt_source': debt_source, 'cash': cap.get('Cash'),
+              'non_operating_assets': nonop,
               'short_term_investments': cap.get('Short-term investments'),
               'shares': bal.get('Shares outstanding'), 'shares_date': bal.get('Shares measurement date'),
               'balance_date': ends[-1]}
     if all(is_number(bridge[k]) for k in ('total_debt', 'cash', 'short_term_investments')):
         # Cash and short-term investments are excluded from operating NWC, so both
         # must be credited to equity here (otherwise they are lost from the valuation).
-        bridge['net_debt'] = bridge['total_debt'] - bridge['cash'] - bridge['short_term_investments']
+        bridge['net_debt'] = (bridge['total_debt'] - bridge['cash'] - bridge['short_term_investments']
+                              - sum(nonop.values()))
     else:
         bridge['net_debt'] = None
     return {'cik': cik, 'name': name, 'sic': sic, 'decision': decision, 'history': history,
@@ -119,7 +133,10 @@ def main():
           f"(debt − cash − ST investments) · shares {shares:,.0f}" if shares else 'Shares unavailable')
     if not args.shares:
         print('  ! Shares = SEC cover-page BASIC snapshot, not diluted. Pass --shares for diluted count.')
-    print('  ! Long-term marketable securities, equity investments and operating-lease debt are NOT in the bridge.')
+    print(f"  Debt source: {br['debt_source']}")
+    for k, v in br['non_operating_assets'].items():
+        print(f'  + {k} credited at book value: {v / 1e9:,.2f}B (VERIFY that its income is excluded from EBIT)')
+    print('  ! Operating-lease liabilities are NOT treated as debt (consistent with EBIT after lease expense).')
     for f in data['capital_flags']:
         print('  ! ' + f)
     if br['net_debt'] is None or not shares:

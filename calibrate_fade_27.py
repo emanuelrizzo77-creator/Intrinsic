@@ -5,6 +5,9 @@
 3. Splits companies: CIK % 5 == 0 -> locked TEST set, never used to estimate.
 4. Estimates, on TRAIN companies only, by revenue size bucket:
      growth fade  : (g_{t+h} - c)       = phi^h (g_t - c)
+   NOTE: psi is the forecast-optimal weight on the current value given a NOISY
+   anchor (median of prior years), not a structural reversion speed; the driver
+   model uses exactly the same anchor definition, so the weight is consistent.
      margin fade  : (m_{t+h} - anchor_t) = psi^h (m_t - anchor_t), anchor_t = median margin up to t
      intensity    : same as margin for Net PP&E / revenue
 5. Evaluates on TEST companies at h = 1, 3, 5 vs baselines (random walk,
@@ -38,6 +41,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SERIES_DIR = os.path.join(CACHE_DIR, 'series27')
 REVENUE_TAGS = tuple(TAGS_21B['Revenue']) + ('RevenueFromContractWithCustomerIncludingAssessedTax',)
 HORIZONS = (1, 2, 3, 4, 5)
+MIN_REVENUE = 1e8          # origins below $100M revenue are excluded (shells, pre-revenue)
+EXCHANGES = {'NYSE', 'Nasdaq'}
+HIGH_GROWTH = 0.25          # starting growth above this gets its own fade estimate
 
 
 def _get(url):
@@ -94,8 +100,8 @@ def chains(rows):
 def enrich(run):
     for i, r in enumerate(run):
         r['g'] = min(1.5, max(-0.5, r['rev'] / run[i - 1]['rev'] - 1)) if i else None
-        r['m'] = r['ebit'] / r['rev'] if r['ebit'] is not None else None
-        r['k'] = r['ppe'] / r['rev'] if r['ppe'] is not None else None
+        r['m'] = min(1.0, max(-1.0, r['ebit'] / r['rev'])) if r['ebit'] is not None else None
+        r['k'] = min(5.0, max(0.0, r['ppe'] / r['rev'])) if r['ppe'] is not None else None
     return run
 
 
@@ -117,10 +123,11 @@ def samples(runs, key, center=None):
     out = {h: [] for h in HORIZONS}
     for run in runs:
         for i, r in enumerate(run):
-            if r[key] is None:
+            if r[key] is None or r['rev'] < MIN_REVENUE:
                 continue
             if center is None:
-                hist = [z[key] for z in run[:i + 1] if z[key] is not None]
+                # point-in-time anchor from PRIOR years only (excluding t avoids anchoring on m_t itself)
+                hist = [z[key] for z in run[:i] if z[key] is not None]
                 if len(hist) < 3:
                     continue
                 anchor = median(hist)
@@ -151,15 +158,18 @@ def fit(samp, min_n=30):
 
 def evaluate(test_runs, cal, center):
     """Out-of-sample errors on TEST companies. Revenue: log level error at h. Margin: pp."""
-    gphi = lambda rev: (cal['growth_fade'].get(size_bucket(rev)) or cal['growth_fade']['all'])['phi']
+    def gphi(rev, g):
+        if g > HIGH_GROWTH and cal.get('growth_fade_high'):
+            return cal['growth_fade_high']['phi']
+        return (cal['growth_fade'].get(size_bucket(rev)) or cal['growth_fade']['all'])['phi']
     mphi = lambda rev: (cal['margin_fade'].get(size_bucket(rev)) or cal['margin_fade']['all'])['phi']
     errs = {}   # (metric, model, h) -> list of (company, error)
     for cid, run in test_runs:
         for i, r in enumerate(run):
-            if r['g'] is None:
+            if r['g'] is None or r['rev'] < MIN_REVENUE:
                 continue
             past_g = [z['g'] for z in run[max(1, i - 4):i + 1] if z['g'] is not None]
-            past_m = [z['m'] for z in run[:i + 1] if z['m'] is not None]
+            past_m = [z['m'] for z in run[:i] if z['m'] is not None]
             for h in (1, 3, 5):
                 if i + h >= len(run):
                     continue
@@ -167,7 +177,7 @@ def evaluate(test_runs, cal, center):
                 paths = {
                     'random_walk': [r['g']] * h,
                     'hist_median': [median(past_g)] * h,
-                    'fade_27': [center + (r['g'] - center) * gphi(r['rev']) ** s for s in range(1, h + 1)],
+                    'fade_27': [center + (r['g'] - center) * gphi(r['rev'], r['g']) ** s for s in range(1, h + 1)],
                 }
                 for model, path in paths.items():
                     level = r['rev'] * math.prod(1 + x for x in path)
@@ -195,11 +205,11 @@ def bootstrap_diff(a, b, reps=500, seed=7):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--n', type=int, default=500, help='companies to sample')
+    ap.add_argument('--n', type=int, default=1500, help='companies to sample (NYSE/Nasdaq only)')
     ap.add_argument('--seed', type=int, default=27)
     args = ap.parse_args()
     with open(os.path.join(HERE, 'intrinsic_sec_companies.csv')) as fh:
-        universe = sorted({int(r['cik']) for r in csv.DictReader(fh)})
+        universe = sorted({int(r['cik']) for r in csv.DictReader(fh) if r.get('exchange') in EXCHANGES})
     random.Random(args.seed).shuffle(universe)
     train, test = [], []
     for i, cik in enumerate(universe[:args.n], 1):
@@ -210,13 +220,15 @@ def main():
             print(f'  {i}/{args.n} companies · train runs {len(train)} · test runs {len(test)}', flush=True)
 
     train_runs = [r for _, r in train]
-    center = median([z['g'] for r in train_runs for z in r if z['g'] is not None])
+    center = median([z['g'] for r in train_runs for z in r if z['g'] is not None and z['rev'] >= MIN_REVENUE])
     cal = {
         'created_utc': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'universe_sampled': args.n, 'train_companies': len({c for c, _ in train}),
         'test_companies': len({c for c, _ in test}), 'growth_center': center,
-        'vintage': 'first (as originally reported)',
+        'vintage': 'first (as originally reported)', 'min_revenue': MIN_REVENUE, 'exchanges': sorted(EXCHANGES),
         'growth_fade': fit(samples(train_runs, 'g', center=center)),
+        'growth_fade_high': fit({h: [s for s in rows if s[0] + center > HIGH_GROWTH]
+                                 for h, rows in samples(train_runs, 'g', center=center).items()}).get('all'),
         'margin_fade': fit(samples(train_runs, 'm')),
         'intensity_fade': fit(samples(train_runs, 'k')),
         'caveats': [
@@ -225,6 +237,8 @@ def main():
             'Company-level fade speeds are pooled by size bucket only; no sector conditioning yet.',
         ],
     }
+    if cal['growth_fade_high']:
+        cal['growth_fade_high']['threshold'] = HIGH_GROWTH
     if 'all' not in cal['growth_fade'] or 'all' not in cal['margin_fade']:
         raise SystemExit('Not enough data to calibrate; increase --n')
     g_phi, m_phi = cal['growth_fade']['all']['phi'], cal['margin_fade']['all']['phi']
@@ -253,6 +267,12 @@ def main():
     cal['out_of_sample'] = report
     with open(os.path.join(HERE, 'calibration_27.json'), 'w') as fh:
         json.dump(cal, fh, indent=2)
+    print('Fade estimates by bucket (phi, n at h=1):')
+    for key in ('growth_fade', 'margin_fade', 'intensity_fade'):
+        print('  ' + key + ': ' + ', '.join(f"{b}={v['phi']:.2f} (n={v['n_by_horizon'].get(1, v['n_by_horizon'].get('1'))})"
+                                         for b, v in cal[key].items()))
+    hg = cal.get('growth_fade_high')
+    print(f"  growth_fade_high (g0>{HIGH_GROWTH:.0%}): " + (f"{hg['phi']:.2f} (n={hg['n_by_horizon'].get(1)})" if hg else 'insufficient data'))
     print(f"\nSaved calibration_27.json · growth phi(all)={g_phi:.2f} · margin psi(all)={m_phi:.2f} · "
           f"intensity={cal['intensity_fade'].get('all', {}).get('phi')}")
 

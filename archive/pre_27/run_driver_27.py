@@ -1,0 +1,162 @@
+"""Run the Intrinsic 27 driver model for one ticker from the command line.
+
+Usage:
+  export INTRINSIC_SEC_USER_AGENT="Intrinsic your@email.com"
+  python run_driver_27.py NVDA --wacc 0.10 --g 0.025
+  python run_driver_27.py TSLA --wacc 0.10 --override dep_rate=0.12
+  python run_driver_27.py MSFT --wacc 0.09 --override intensity_target=0.55 --json msft_27.json
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import os
+
+import driver_forecast_27 as dm
+from operating_capital_27 import build_capital_history
+from sec_annual_27 import companyfacts_cached, is_number, submissions_cached
+from universal_financial_23b import normalize_balance_23b
+from universal_financial_23c import analyze_historical_23c
+from universal_valuation_21c import classify_sic
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def lookup_cik(ticker):
+    with open(os.path.join(HERE, 'intrinsic_sec_companies.csv')) as fh:
+        for row in csv.DictReader(fh):
+            if row['ticker'].upper() == ticker.upper():
+                return int(row['cik']), row['company']
+    raise SystemExit(f'Ticker {ticker} not found in intrinsic_sec_companies.csv')
+
+
+def load_inputs(ticker, last_n=10):
+    cik, name = lookup_cik(ticker)
+    payload = companyfacts_cached(cik)
+    sic = submissions_cached(cik).get('sic')
+    decision = classify_sic(sic)
+    hist = analyze_historical_23c(payload, last_n=last_n)
+    ends = [r['Fiscal year end'] for r in hist['rows']]
+    capital = build_capital_history(payload, ends)
+    history = dm.merge_history(hist['rows'], capital)
+    bal = normalize_balance_23b(payload, ends[-1:])[-1]
+    cap = capital[-1]
+    bridge = {'total_debt': bal.get('Total debt'), 'cash': cap.get('Cash'),
+              'short_term_investments': cap.get('Short-term investments'),
+              'shares': bal.get('Shares outstanding'), 'shares_date': bal.get('Shares measurement date'),
+              'balance_date': ends[-1]}
+    if all(is_number(bridge[k]) for k in ('total_debt', 'cash', 'short_term_investments')):
+        # Cash and short-term investments are excluded from operating NWC, so both
+        # must be credited to equity here (otherwise they are lost from the valuation).
+        bridge['net_debt'] = bridge['total_debt'] - bridge['cash'] - bridge['short_term_investments']
+    else:
+        bridge['net_debt'] = None
+    return {'cik': cik, 'name': name, 'sic': sic, 'decision': decision, 'history': history,
+            'bridge': bridge, 'capital_flags': cap.get('flags', [])}
+
+
+def _b(x):
+    return f'{x / 1e9:9.2f}' if is_number(x) else '      n/a'
+
+
+def _p(x):
+    return f'{x:8.1%}' if is_number(x) else '     n/a'
+
+
+def print_drivers(a):
+    print('\nDRIVERS (value · source · note)')
+    for k, x in a['drivers'].items():
+        val = x['value']
+        shown = f'{val:,.4g}' if is_number(val) else str(val)
+        print(f'  {k:<18} {shown:>14}  [{x["source"]:<10}] {x["note"]}')
+
+
+def print_projection(p):
+    cols = ('year', 'revenue', 'growth', 'ebit_margin', 'nopat', 'da', 'capex', 'delta_nwc',
+            'fcff', 'reinvestment_rate', 'roic')
+    print('\nPROJECTION (USD billions; ratios in %)')
+    print('  ' + ''.join(f'{c[:9]:>10}' for c in cols))
+    for r in p['rows']:
+        cells = []
+        for c in cols:
+            v = r[c]
+            if c == 'year':
+                cells.append(f'{v:>10}')
+            elif c in ('growth', 'ebit_margin', 'reinvestment_rate', 'roic'):
+                cells.append(' ' + _p(v) + ' ')
+            else:
+                cells.append(' ' + _b(v))
+        print('  ' + ''.join(cells))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('ticker')
+    ap.add_argument('--wacc', type=float, required=True)
+    ap.add_argument('--g', type=float, default=0.025, help='terminal growth (decimal)')
+    ap.add_argument('--horizon', type=int, default=10)
+    ap.add_argument('--scenario', default='all', choices=('all', 'base', 'conservative', 'optimistic'))
+    ap.add_argument('--override', action='append', default=[], help='driver=value (decimal)')
+    ap.add_argument('--shares', type=float, help='diluted shares (overrides SEC basic snapshot)')
+    ap.add_argument('--mid-year', action='store_true')
+    ap.add_argument('--json', help='write full results to this file')
+    args = ap.parse_args()
+
+    overrides = {}
+    for item in args.override:
+        key, _, val = item.partition('=')
+        overrides[key.strip()] = float(val)
+
+    data = load_inputs(args.ticker)
+    print(f"\nINTRINSIC 27 — {data['name']} ({args.ticker.upper()}) · CIK {data['cik']} · SIC {data['sic']}")
+    if data['decision'].model != 'fcff':
+        print(f"REFUSED: {data['decision'].category} — {data['decision'].reason}")
+        return
+    br = data['bridge']
+    shares = args.shares or br['shares']
+    print(f"Balance date {br['balance_date']} · net debt {_b(br['net_debt']).strip()}B "
+          f"(debt − cash − ST investments) · shares {shares:,.0f}" if shares else 'Shares unavailable')
+    if not args.shares:
+        print('  ! Shares = SEC cover-page BASIC snapshot, not diluted. Pass --shares for diluted count.')
+    print('  ! Long-term marketable securities, equity investments and operating-lease debt are NOT in the bridge.')
+    for f in data['capital_flags']:
+        print('  ! ' + f)
+    if br['net_debt'] is None or not shares:
+        print('BLOCKED: incomplete enterprise-to-equity bridge (debt, cash, ST investments or shares).')
+        return
+
+    scenarios = ('conservative', 'base', 'optimistic') if args.scenario == 'all' else (args.scenario,)
+    results = {}
+    for s in scenarios:
+        out = dm.run(data['history'], wacc=args.wacc, terminal_growth=args.g, net_debt=br['net_debt'],
+                     shares=shares, scenario=s, horizon=args.horizon, overrides=overrides,
+                     mid_year=args.mid_year)
+        results[s] = out
+        a = out['assumptions']
+        print(f"\n=== {s.upper()} · status {out['status']} · validated={out['validated']} ===")
+        for b in a['blockers']:
+            print('  BLOCKER: ' + b)
+        for x in a['degradations']:
+            print('  degraded: ' + x)
+        if s == 'base' or len(scenarios) == 1:
+            print_drivers(a)
+        if 'projection' in out and (s == 'base' or len(scenarios) == 1):
+            print_projection(out['projection'])
+        if 'valuation' in out:
+            v = out['valuation']
+            print(f"\n  EV {_b(v['enterprise_value']).strip()}B · equity {_b(v['equity_value']).strip()}B · "
+                  f"intrinsic/share ${v['intrinsic_price']:,.2f} · terminal share of EV "
+                  f"{v['terminal_share_of_ev']:.0%} · RONIC {v['terminal']['ronic']:.1%}")
+        for c in out.get('checks', []):
+            print('  check: ' + c)
+        if out.get('valuation_error'):
+            print('  VALUATION BLOCKED: ' + out['valuation_error'])
+    if args.json:
+        with open(args.json, 'w') as fh:
+            json.dump({'ticker': args.ticker.upper(), 'bridge': br, 'results': results}, fh, indent=2, default=str)
+        print(f'\nSaved {args.json}')
+
+
+if __name__ == '__main__':
+    main()

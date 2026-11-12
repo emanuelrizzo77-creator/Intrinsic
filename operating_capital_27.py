@@ -24,8 +24,17 @@ CURRENT_ASSETS = ('AssetsCurrent',)
 CURRENT_LIABILITIES = ('LiabilitiesCurrent',)
 CASH = ('CashAndCashEquivalentsAtCarryingValue',
         'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents', 'Cash')
-SHORT_TERM_INVESTMENTS = ('ShortTermInvestments', 'MarketableSecuritiesCurrent',
-                          'AvailableForSaleSecuritiesDebtSecuritiesCurrent')
+CASH_AND_STI_TOTAL = ('CashCashEquivalentsAndShortTermInvestments',)
+SHORT_TERM_INVESTMENTS = ('ShortTermInvestments', 'OtherShortTermInvestments')
+MARKETABLE_CURRENT = ('MarketableSecuritiesCurrent', 'AvailableForSaleSecuritiesDebtSecuritiesCurrent')
+# Totals that are current ONLY when the company reports no noncurrent counterpart.
+MARKETABLE_TOTAL = (('MarketableSecurities', 'MarketableSecuritiesNoncurrent'),
+                    ('AvailableForSaleSecuritiesDebtSecurities', 'AvailableForSaleSecuritiesDebtSecuritiesNoncurrent'))
+NONOPERATING_LONG_TERM = {
+    'Equity-method investments': ('EquityMethodInvestments',),
+    'Long-term marketable securities': ('MarketableSecuritiesNoncurrent',
+                                        'AvailableForSaleSecuritiesDebtSecuritiesNoncurrent', 'LongTermInvestments'),
+}
 DEBT_CURRENT_TOTAL = ('DebtCurrent',)
 LTD_CURRENT = ('LongTermDebtCurrent', 'LongTermDebtAndCapitalLeaseObligationsCurrent')
 SHORT_BORROWINGS = ('ShortTermBorrowings', 'CommercialPaper')
@@ -39,7 +48,12 @@ def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None)
     kw = {'vintage': vintage, 'as_of': as_of}
     pts = {name: annual_points(payload, tags, **kw) for name, tags in {
         'ppe': PPE_TAGS, 'ca': CURRENT_ASSETS, 'cl': CURRENT_LIABILITIES, 'cash': CASH,
-        'sti': SHORT_TERM_INVESTMENTS, 'debt_total': DEBT_CURRENT_TOTAL, 'ltd': LTD_CURRENT,
+        'sti': SHORT_TERM_INVESTMENTS, 'cash_sti': CASH_AND_STI_TOTAL, 'mkt_cur': MARKETABLE_CURRENT,
+        'eqm': NONOPERATING_LONG_TERM['Equity-method investments'],
+        'ltm': NONOPERATING_LONG_TERM['Long-term marketable securities'],
+        **{f'mt{i}': (tot, ) for i, (tot, _) in enumerate(MARKETABLE_TOTAL)},
+        **{f'mn{i}': (nc, ) for i, (_, nc) in enumerate(MARKETABLE_TOTAL)},
+        'debt_total': DEBT_CURRENT_TOTAL, 'ltd': LTD_CURRENT,
         'stb': SHORT_BORROWINGS, 'gw': GOODWILL, 'intang': INTANGIBLES}.items()}
     flows = {'dep': annual_flows(payload, DEPRECIATION, **kw),
              'amort': annual_flows(payload, AMORTIZATION, **kw)}
@@ -68,9 +82,40 @@ def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None)
         if ppe is None:
             row['flags'].append('MISSING: Net PP&E')
 
+        # Short-term investments: prefer the balance-sheet subtotal (cash + STI) minus cash.
+        cash_sti = val(pts, 'cash_sti', 'Cash + short-term investments')
+        separate_marketable = False
+        if is_number(cash_sti) and is_number(cash) and cash_sti >= cash:
+            sti = cash_sti - cash
+            row['tags']['Short-term investments'] = 'derived:CashCashEquivalentsAndShortTermInvestments-cash'
+            separate_marketable = True      # the subtotal excludes any separate marketable line
+        # Marketable securities are a separate line only when no STI line was found,
+        # or when STI came from the cash subtotal (e.g. Coca-Cola). Never both otherwise.
+        if sti is None or separate_marketable:
+            mkt = val(pts, 'mkt_cur', 'Marketable securities (current)')
+            if mkt is None:
+                # When STI came from the cash subtotal, AFS debt securities usually ARE
+                # those short-term investments: only a distinct 'MarketableSecurities'
+                # line may be added. AFS totals are used only when no STI line exists.
+                candidates = range(1) if separate_marketable else range(len(MARKETABLE_TOTAL))
+                for i in candidates:
+                    total = val(pts, f'mt{i}', f'Marketable total {i}')
+                    if total is not None and pts[f'mn{i}'].get(end) is None:
+                        mkt = total
+                        row['flags'].append(f'VERIFY: {MARKETABLE_TOTAL[i][0]} total treated as current '
+                                            '(no noncurrent counterpart reported)')
+                        break
+            if mkt is not None:
+                sti = (sti or 0.0) + mkt
         if sti is None:
             sti = 0.0
-            row['flags'].append('ASSUMED_ZERO: short-term investments tag absent')
+            row['flags'].append('ASSUMED_ZERO: short-term investments / marketable securities tags absent')
+        if is_number(ca) and is_number(cash) and sti > ca - cash:
+            row['flags'].append('INCONSISTENT: short-term investments exceed current assets less cash; capped')
+            sti = max(0.0, ca - cash)
+        eqm, ltm = val(pts, 'eqm', 'Equity-method investments'), val(pts, 'ltm', 'Long-term marketable securities')
+        row['Equity-method investments'] = eqm
+        row['Long-term marketable securities'] = ltm
         if debt_total is not None:
             current_debt = debt_total
         elif ltd is not None or stb is not None:
