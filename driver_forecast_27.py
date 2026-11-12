@@ -22,6 +22,7 @@ Mechanics (horizon H, default 10 years, then a value-driver terminal value):
 from __future__ import annotations
 
 import json
+import math
 import os
 from statistics import median
 
@@ -169,7 +170,7 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         raise ValueError('Empty history')
     last = h[-1]
     diag = historical_diagnostics(h)
-    blockers, degraded, d = [], [], {}
+    blockers, degraded, notes, d = [], [], [], {}
 
     rev0 = last.get('Revenue')
     if not is_number(rev0) or rev0 <= 0:
@@ -288,8 +289,8 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     elif rd_life and is_number(last.get('R&D')):
         degraded.append(f'R&D reported but fewer than {rd_life + 1} consecutive years: not capitalised')
     elif rd_life:
-        degraded.append('No R&D tag (or R&D reported under another caption): R&D not capitalised; '
-                        'ROIC on operating capital may be overstated')
+        notes.append('No R&D tag (or R&D reported under another caption): R&D not capitalised; '
+                     'ROIC may be overstated if growth investment is expensed')
 
     recon = _med(diag['capex_reconciliation'])
     if recon is not None and not 0.7 <= recon <= 1.3:
@@ -301,7 +302,20 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
                       'and NWC ratio (consistent with explicit years); wacc = excess returns vanish')
     d['wacc'] = _drv(wacc, 'user')
 
-    if scenario != 'base':
+    bands = cal.get('scenario_bands') or {}
+    if scenario != 'base' and bands:
+        # Horizon-specific p20/p80 bands of the calibrated forecast error (validated
+        # out of sample: revenue coverage 54-62% for a 60% band). Revenue level and
+        # margin are shifted together, so the combined scenario is more extreme than p20/p80.
+        high_t = (cal.get('growth_fade_high') or {}).get('threshold', 0.25)
+        group = 'high_growth' if (is_number(g0) and g0 > high_t and 'high_growth' in bands) else 'all'
+        k = 0 if scenario == 'conservative' else 1
+        tbl = bands[group]
+        d['revenue_band'] = _drv([tbl[str(h)]['revenue_log'][k] for h in range(1, 6)], 'calibrated',
+                                 f'{scenario}: p{20 if k == 0 else 80} log-revenue error by horizon ({group}); held after year 5')
+        d['margin_band'] = _drv([tbl[str(h)]['margin'][k] for h in range(1, 6)], 'calibrated',
+                                f'{scenario}: p{20 if k == 0 else 80} margin error by horizon ({group}); held after year 5')
+    elif scenario != 'base':
         sign = -1 if scenario == 'conservative' else 1
         q = cal.get('scenario_quantiles', {})
         gq, mq = q.get('growth_p20_p80_h1'), q.get('margin_p20_p80_h5')
@@ -333,7 +347,7 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         if d[key]['value'] is None:
             blockers.append(f'{key} unavailable')
     status = 'BLOCKED' if blockers else ('DEGRADED' if degraded else 'DATA_COMPLETE')
-    return {'drivers': d, 'status': status, 'blockers': blockers, 'degradations': degraded,
+    return {'drivers': d, 'status': status, 'blockers': blockers, 'degradations': degraded, 'notes': notes,
             'diagnostics': diag, 'scenario': scenario}
 
 
@@ -362,10 +376,17 @@ def project(assumptions, horizon=10):
     cap_rd = 'research_asset0' in v
     if cap_rd:
         life, rd_hist, ra_prev = int(v['rd_life']), list(v['rd_history']), v['research_asset0']
+    base_rev = rev_prev
     for t in range(1, horizon + 1):
         g = gT + (g0 - gT) * phi ** t
-        rev = rev_prev * (1 + g)
+        base_rev = base_rev * (1 + g)
+        rev = base_rev
         margin = mT + (m0 - mT) * psi ** t
+        if 'revenue_band' in v:                     # scenario = base path shifted by horizon band
+            hb = min(t, 5) - 1
+            rev = base_rev * math.exp(v['revenue_band'][hb])
+            margin += v['margin_band'][hb]
+            g = rev / rev_prev - 1
         ebit = rev * margin
         tax = v['tax_start'] + (v['tax_terminal'] - v['tax_start']) * t / horizon
         nopat = ebit * (1 - tax) if ebit > 0 else ebit   # no tax credit assumed on losses

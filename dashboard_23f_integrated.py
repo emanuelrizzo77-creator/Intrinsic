@@ -451,7 +451,7 @@ def cargar_escenarios_empresa(ticker):
 
 forecast_method = st.sidebar.radio(
     "Forecast Methodology",
-    ["Historical Median", "Normalized Forecast"],
+    ["Historical Median", "Normalized Forecast", "Driver Model 27 (10-year, validated)"],
     key=f"forecast_method_{ticker}",
 )
 if new_company:
@@ -925,6 +925,12 @@ if wacc <= terminal_growth:
     st.error(
         "WACC must be greater than Terminal Growth."
     )
+    st.stop()
+
+# Intrinsic 27: integrated driver model renders its own panel (5-year inputs above do not apply).
+if forecast_method == "Driver Model 27 (10-year, validated)":
+    from dashboard_27_panel import render_model_27
+    render_model_27(ticker, wacc, terminal_growth, market_price)
     st.stop()
 
 try:

@@ -168,6 +168,8 @@ def main():
             print('  BLOCKER: ' + b)
         for x in a['degradations']:
             print('  degraded: ' + x)
+        for x in a.get('notes', []):
+            print('  note: ' + x)
         if s == 'base' or len(scenarios) == 1:
             print_drivers(a)
         if 'projection' in out and (s == 'base' or len(scenarios) == 1):

@@ -207,7 +207,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--n', type=int, default=1500, help='companies to sample (NYSE/Nasdaq only)')
     ap.add_argument('--seed', type=int, default=27)
+    ap.add_argument('--production', action='store_true', help='fit on ALL cached companies (post-validation)')
     args = ap.parse_args()
+    if args.production:
+        return production()
     with open(os.path.join(HERE, 'intrinsic_sec_companies.csv')) as fh:
         universe = sorted({int(r['cik']) for r in csv.DictReader(fh) if r.get('exchange') in EXCHANGES})
     random.Random(args.seed).shuffle(universe)
@@ -275,6 +278,82 @@ def main():
     print(f"  growth_fade_high (g0>{HIGH_GROWTH:.0%}): " + (f"{hg['phi']:.2f} (n={hg['n_by_horizon'].get(1)})" if hg else 'insufficient data'))
     print(f"\nSaved calibration_27.json · growth phi(all)={g_phi:.2f} · margin psi(all)={m_phi:.2f} · "
           f"intensity={cal['intensity_fade'].get('all', {}).get('phi')}")
+
+
+
+# ------------------------------------------------------------------
+# Production calibration (after the final validation): ALL cached companies,
+# all years, no split. Adds horizon-specific scenario bands, validated by
+# scenario_coverage_27.py (revenue p20-p80 coverage 54-62% out of sample).
+# ------------------------------------------------------------------
+
+def _pooled(table, rev):
+    from driver_forecast_27 import POOLING_K
+    allp, own = table['all'], table.get(size_bucket(rev))
+    if not own:
+        return allp['phi']
+    n = own['n_by_horizon'].get(1, 0)
+    w = n / (n + POOLING_K)
+    return w * own['phi'] + (1 - w) * allp['phi']
+
+
+def production():
+    with open(os.path.join(HERE, 'intrinsic_sec_companies.csv')) as fh:
+        listed = {int(r['cik']) for r in csv.DictReader(fh) if r.get('exchange') in EXCHANGES}
+    ciks = sorted({int(f[:-5]) for f in os.listdir(SERIES_DIR)} & listed)
+    runs = []
+    for cik in ciks:
+        runs.extend(enrich(r) for r in chains(company_series(cik)['rows']))
+    center = median([z['g'] for r in runs for z in r if z['g'] is not None and z['rev'] >= MIN_REVENUE])
+    gs = samples(runs, 'g', center=center)
+    out = {
+        'mode': 'production (all data, no holdout; validated design: final_validation_27.json)',
+        'created_utc': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'companies': len(ciks), 'growth_center': center, 'vintage': 'first',
+        'min_revenue': MIN_REVENUE, 'exchanges': sorted(EXCHANGES),
+        'growth_fade': fit(gs), 'margin_fade': fit(samples(runs, 'm')),
+        'intensity_fade': fit(samples(runs, 'k')),
+        'growth_fade_high': fit({h: [s for s in rows if s[0] + center > HIGH_GROWTH] for h, rows in gs.items()}).get('all'),
+    }
+    out['growth_fade_high']['threshold'] = HIGH_GROWTH
+    # Horizon-specific residual quantiles of the production fade forecast
+    errs = {'all': {}, 'high_growth': {}}
+    for run in runs:
+        for i, r in enumerate(run):
+            if r['g'] is None or r['rev'] < MIN_REVENUE:
+                continue
+            high = r['g'] > HIGH_GROWTH
+            gphi = out['growth_fade_high']['phi'] if high else _pooled(out['growth_fade'], r['rev'])
+            mphi = _pooled(out['margin_fade'], r['rev'])
+            past_m = [z['m'] for z in run[:i] if z['m'] is not None][-9:]
+            for h in HORIZONS:
+                if i + h >= len(run):
+                    continue
+                t = run[i + h]
+                lvl = r['rev'] * math.prod(1 + center + (r['g'] - center) * gphi ** s for s in range(1, h + 1))
+                rec = [math.log(t['rev'] / lvl), None]
+                if r['m'] is not None and len(past_m) >= 3 and t['m'] is not None:
+                    a = median(past_m)
+                    rec[1] = t['m'] - (a + (r['m'] - a) * mphi ** h)
+                for group in ('all', 'high_growth') if high else ('all',):
+                    errs[group].setdefault(h, []).append(rec)
+    bands = {}
+    for group, by_h in errs.items():
+        if len(by_h.get(5, [])) < 100:
+            continue
+        bands[group] = {str(h): {'revenue_log': [_q([e[0] for e in v], .2), _q([e[0] for e in v], .8)],
+                                 'margin': [_q([e[1] for e in v if e[1] is not None], .2),
+                                            _q([e[1] for e in v if e[1] is not None], .8)],
+                                 'n': len(v)} for h, v in sorted(by_h.items())}
+    out['scenario_bands'] = bands
+    with open(os.path.join(HERE, 'calibration_27.json'), 'w') as fh:
+        json.dump(out, fh, indent=2)
+    print(f"Production calibration · {len(ciks)} companies · growth phi(all) {out['growth_fade']['all']['phi']:.2f} · "
+          f"high-growth {out['growth_fade_high']['phi']:.2f} · margin psi(all) {out['margin_fade']['all']['phi']:.2f}")
+    for group, b in bands.items():
+        print(f'  bands [{group}]: ' + '  '.join(f"h{h}: rev [{v['revenue_log'][0]:+.2f},{v['revenue_log'][1]:+.2f}] "
+                                                f"mar [{v['margin'][0] * 100:+.1f},{v['margin'][1] * 100:+.1f}]pp"
+                                                for h, v in b.items()))
 
 
 if __name__ == '__main__':
