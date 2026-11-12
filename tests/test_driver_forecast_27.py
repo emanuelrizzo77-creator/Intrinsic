@@ -57,8 +57,18 @@ class DriverModel27(unittest.TestCase):
         for r in out['projection']['rows']:
             self.assertLess(r['delta_nwc'], 0)
 
-    def test_terminal_value_uses_value_driver_formula(self):
+    def test_base_terminal_is_steady_state_consistent(self):
         out = self.run_model()
+        term, last = out['valuation']['terminal'], out['projection']['rows'][-1]
+        self.assertEqual(term['mode'], 'steady_state')
+        expected = 0.03 * last['revenue'] * (last['ppe_intensity'] + last['nwc_ratio']) / term['nopat']
+        self.assertAlmostEqual(term['reinvestment_rate'], expected, places=9)
+        self.assertAlmostEqual(term['fcff'], term['nopat'] * (1 - expected), places=6)
+        # no jump between the final explicit year and the terminal period
+        self.assertLess(abs(last['reinvestment_rate'] - term['reinvestment_rate']), 0.05)
+
+    def test_terminal_value_uses_value_driver_formula(self):
+        out = self.run_model(scenario='conservative')
         term = out['valuation']['terminal']
         self.assertAlmostEqual(term['ronic'], 0.09)
         self.assertAlmostEqual(term['fcff'], term['nopat'] * (1 - 0.03 / 0.09), places=6)

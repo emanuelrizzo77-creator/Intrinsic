@@ -40,6 +40,7 @@ PROVISIONAL = {
 }
 MARGINAL_TAX = 0.25            # 21% federal + ~4% state; editable assumption
 AMORT_RUNOFF_YEARS = 5         # organic forecast: existing acquired intangibles run off
+POOLING_K = 200               # pseudo-observations of the all-company estimate (hyperparameter)
 SIZE_BUCKETS = ((1e9, '<1B'), (1e10, '1-10B'), (1e11, '10-100B'), (float('inf'), '>100B'))
 
 
@@ -187,12 +188,21 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     cal = calibration or {}
     bucket = size_bucket(rev0) if rev0 else 'all'
 
+    def _n(entry):
+        n = entry.get('n_by_horizon', {})
+        return n.get(1, n.get('1', 0))
+
     def calibrated(key):
+        # Partial pooling (empirical-Bayes style): a size bucket's estimate is
+        # shrunk toward the all-company estimate with weight n / (n + POOLING_K).
         table = cal.get(key, {})
-        if isinstance(table.get(bucket), dict):
-            return table[bucket].get('phi'), bucket
-        if isinstance(table.get('all'), dict):
-            return table['all'].get('phi'), f"all (bucket {bucket} had too few observations)"
+        overall, own = table.get('all'), table.get(bucket)
+        if isinstance(own, dict) and isinstance(overall, dict):
+            w = _n(own) / (_n(own) + POOLING_K)
+            phi = w * own['phi'] + (1 - w) * overall['phi']
+            return phi, f"bucket {bucket} (n={_n(own)}, weight {w:.0%}) pooled with all ({overall['phi']:.2f})"
+        if isinstance(overall, dict):
+            return overall['phi'], f"all (no estimate for bucket {bucket})"
         return None, None
 
     high = cal.get('growth_fade_high')
@@ -200,9 +210,10 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
                       ('intensity_fade', 'intensity_fade')):
         phi, used = calibrated(key)
         if name == 'growth_fade' and isinstance(high, dict) and is_number(g0) and g0 > high.get('threshold', 0.25):
-            phi, used = high['phi'], f"high-growth panel (start growth > {high.get('threshold', 0.25):.0%})"
+            phi, used = high['phi'], (f"high-growth panel (start growth > {high.get('threshold', 0.25):.0%}, "
+                                       f"n={_n(high)})")
         if phi is not None:
-            d[name] = _drv(phi, 'calibrated', f'panel estimate, size bucket {used}')
+            d[name] = _drv(round(phi, 3), 'calibrated', f'panel estimate: {used}')
         else:
             d[name] = _drv(PROVISIONAL[name], 'assumption', 'PROVISIONAL: run calibrate_fade_27.py to estimate')
     if not cal:
@@ -267,8 +278,9 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         degraded.append(f'PP&E roll-forward does not reconcile to reported CapEx (median implied/reported '
                         f'= {recon:.2f}): leases, acquisitions, impairments or FX. Projected CapEx includes these.')
 
-    d['ronic'] = _drv('wacc' if scenario != 'optimistic' else 'last_roic', 'assumption',
-                      'return on NEW capital in perpetuity: wacc = no excess returns; last_roic = moat persists')
+    d['ronic'] = _drv('wacc' if scenario == 'conservative' else 'steady_state', 'assumption',
+                      'terminal reinvestment: steady_state = growth at g with final-year capital intensity '
+                      'and NWC ratio (consistent with explicit years); wacc = excess returns vanish')
     d['wacc'] = _drv(wacc, 'user')
 
     if scenario != 'base':
@@ -374,21 +386,34 @@ def project(assumptions, horizon=10):
 def terminal_value(projection, assumptions):
     v = {k: x['value'] for k, x in assumptions['drivers'].items()}
     last = projection['rows'][-1]
-    g, wacc, ronic = v['terminal_growth'], v['wacc'], v['ronic']
-    if ronic == 'wacc':
-        ronic = wacc
-    elif ronic == 'last_roic':
-        ronic = last['roic'] if last['roic'] and last['roic'] > wacc else wacc
-    if not is_number(ronic) or ronic <= max(g, 0):
-        raise ValueError('RONIC must exceed terminal growth')
+    g, wacc, mode = v['terminal_growth'], v['wacc'], v['ronic']
     rev = last['revenue'] * (1 + g)
     nopat = rev * last['ebit_margin'] * (1 - v['tax_terminal'])
     if nopat <= 0:
         raise ValueError('Terminal NOPAT is not positive: no going-concern terminal value')
-    rr = g / ronic if g > 0 else 0.0
+    notes = []
+    if mode == 'steady_state':
+        # Net investment needed to grow revenue at g while holding final-year
+        # Net PP&E / revenue and operating NWC / revenue constant.
+        reinvest = g * last['revenue'] * (last['ppe_intensity'] + last['nwc_ratio'])
+        rr = reinvest / nopat
+        if rr < 0:
+            notes.append('Steady-state reinvestment negative (NWC release exceeds PP&E needs); floored at 0.')
+            rr = 0.0
+        if rr >= 1:
+            raise ValueError('Steady-state reinvestment exceeds NOPAT: growth destroys value at this margin')
+        ronic = g / rr if rr > 0 else None
+    else:
+        ronic = wacc if mode == 'wacc' else mode
+        if not is_number(ronic) or ronic <= max(g, 0):
+            raise ValueError('RONIC must exceed terminal growth')
+        rr = g / ronic if g > 0 else 0.0
+    if ronic is not None and ronic > 3 * wacc:
+        notes.append(f'Terminal assumes new capital earns {ronic:.0%} on tangible operating capital forever '
+                     '(moat persists); compare with the conservative scenario (RONIC = WACC).')
     fcff = nopat * (1 - rr)
-    return {'revenue': rev, 'nopat': nopat, 'ronic': ronic, 'reinvestment_rate': rr,
-            'fcff': fcff, 'terminal_value': fcff / (wacc - g)}
+    return {'revenue': rev, 'nopat': nopat, 'ronic': ronic, 'reinvestment_rate': rr, 'mode': mode,
+            'notes': notes, 'fcff': fcff, 'terminal_value': fcff / (wacc - g)}
 
 
 def value(projection, assumptions, *, net_debt, shares, mid_year=False):
@@ -424,9 +449,14 @@ def consistency_checks(projection, assumptions, valuation=None):
         issues.append('Margin still converging in final year; terminal margin is not the long-run target.')
     if valuation:
         rr_term, rr_last = valuation['terminal']['reinvestment_rate'], last['reinvestment_rate']
-        if rr_last is not None and abs(rr_last - rr_term) > 0.15:
+        if valuation['terminal'].get('mode') == 'wacc':
+            if rr_last is not None and rr_term - rr_last > 0.15:
+                issues.append(f'Conservative terminal: excess returns vanish after year {last["t"]} '
+                              f'(reinvestment {rr_last:.0%} -> {rr_term:.0%}). Intentional stress case.')
+        elif rr_last is not None and abs(rr_last - rr_term) > 0.15:
             issues.append(f'Final-year reinvestment rate {rr_last:.0%} vs terminal {rr_term:.0%}: explicit '
                           'capital intensity and terminal RONIC imply different economics.')
+        issues.extend(valuation['terminal'].get('notes', []))
         share = valuation['terminal_share_of_ev']
         if share is not None and share > 0.85:
             issues.append(f'Terminal value is {share:.0%} of EV: valuation dominated by perpetuity assumptions.')

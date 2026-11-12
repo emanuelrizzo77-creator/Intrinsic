@@ -164,7 +164,9 @@ def main():
             v = out['valuation']
             print(f"\n  EV {_b(v['enterprise_value']).strip()}B · equity {_b(v['equity_value']).strip()}B · "
                   f"intrinsic/share ${v['intrinsic_price']:,.2f} · terminal share of EV "
-                  f"{v['terminal_share_of_ev']:.0%} · RONIC {v['terminal']['ronic']:.1%}")
+                  f"{v['terminal_share_of_ev']:.0%} · terminal reinvestment {v['terminal']['reinvestment_rate']:.0%} · "
+                  f"RONIC {(format(v['terminal']['ronic'], '.1%') if v['terminal']['ronic'] else 'n/a')} "
+                  f"({v['terminal']['mode']})")
         for c in out.get('checks', []):
             print('  check: ' + c)
         if out.get('valuation_error'):
