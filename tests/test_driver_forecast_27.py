@@ -105,6 +105,23 @@ class DriverModel27(unittest.TestCase):
         self.assertEqual(d['growth_fade']['source'], 'calibrated')
         self.assertEqual(d['intensity_fade']['source'], 'assumption')
 
+    def test_rd_capitalisation_changes_roic_not_cash_flow(self):
+        h = history()
+        for r in h:
+            r['R&D'] = 0.12 * r['Revenue']
+        h[-1]['R&D history'] = [x['R&D'] for x in h[-5:]]
+        h[-1]['Research asset'] = sum(x * (1 - j / 5) for j, x in enumerate(reversed(h[-1]['R&D history'])))
+        plain = self.run_model(h)
+        cap = self.run_model(h, rd_life=5)
+        self.assertIn('research_asset0', cap['assumptions']['drivers'])
+        for a, b in zip(plain['projection']['rows'], cap['projection']['rows']):
+            self.assertAlmostEqual(a['fcff'], b['fcff'], places=6)
+            self.assertLess(b['roic'], a['roic'])
+        self.assertAlmostEqual(plain['valuation']['intrinsic_price'], cap['valuation']['intrinsic_price'], places=6)
+        cons_plain = self.run_model(h, scenario='conservative')['valuation']['intrinsic_price']
+        cons_cap = self.run_model(h, scenario='conservative', rd_life=5)['valuation']['intrinsic_price']
+        self.assertGreater(cons_cap, cons_plain)   # no double-counting of growth investment
+
     def test_wacc_must_exceed_growth(self):
         with self.assertRaises(ValueError):
             self.run_model(wacc=0.03, terminal_growth=0.03)

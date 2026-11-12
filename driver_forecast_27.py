@@ -80,7 +80,7 @@ def merge_history(rows_23c, capital_rows):
         c = cap.get(r['Fiscal year end'], {})
         for key in ('Net PP&E', 'Operating NWC', 'Operating invested capital', 'Depreciation',
                     'Amortization', 'Goodwill', 'Intangibles', 'Short-term investments',
-                    'Current debt', 'Cash'):
+                    'Current debt', 'Cash', 'R&D', 'Research asset', 'R&D amortization', 'R&D history'):
             merged[key] = c.get(key)
         merged['capital_flags'] = list(c.get('flags', []))
         merged['capital_tags'] = dict(c.get('tags', {}))
@@ -158,7 +158,7 @@ def historical_diagnostics(history):
 # ------------------------------------------------------------------
 
 def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
-                       calibration=None, overrides=None):
+                       calibration=None, overrides=None, rd_life=None, rd_life_note=''):
     """Return {'drivers', 'status', 'blockers', 'degradations', 'diagnostics'}."""
     if scenario not in ('base', 'conservative', 'optimistic'):
         raise ValueError('scenario must be base, conservative or optimistic')
@@ -273,6 +273,24 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         for key in ('nwc0', 'nwc_ratio_start', 'nwc_ratio_target'):
             d[key] = _drv(0.0, 'assumption', 'NWC data missing')
 
+    # R&D capitalisation: reclassifies R&D from expense to investment. It changes
+    # NOPAT, invested capital, ROIC and the terminal reinvestment base, NOT the
+    # explicit-year cash flows (the identity is asserted in consistency_checks).
+    hist_rd = last.get('R&D history')
+    if rd_life and is_number(last.get('Research asset')) and hist_rd and rev0:
+        rd_ratios = [r['R&D'] / r['Revenue'] for r in h
+                     if is_number(r.get('R&D')) and is_number(r.get('Revenue')) and r['Revenue'] > 0]
+        d['rd_life'] = _drv(rd_life, 'assumption', f'R&D amortisable life (years), {rd_life_note}')
+        d['rd_history'] = _drv(list(hist_rd), 'data', f'last {rd_life} years of R&D, oldest first')
+        d['research_asset0'] = _drv(last['Research asset'], 'data', 'unamortised capitalised R&D, latest')
+        d['rd_ratio_start'] = _drv(last['R&D'] / rev0, 'data', 'R&D / revenue, latest')
+        d['rd_ratio_target'] = _drv(_med(prior(rd_ratios)), 'data', 'median R&D / revenue, prior years')
+    elif rd_life and is_number(last.get('R&D')):
+        degraded.append(f'R&D reported but fewer than {rd_life + 1} consecutive years: not capitalised')
+    elif rd_life:
+        degraded.append('No R&D tag (or R&D reported under another caption): R&D not capitalised; '
+                        'ROIC on operating capital may be overstated')
+
     recon = _med(diag['capex_reconciliation'])
     if recon is not None and not 0.7 <= recon <= 1.3:
         degraded.append(f'PP&E roll-forward does not reconcile to reported CapEx (median implied/reported '
@@ -341,6 +359,9 @@ def project(assumptions, horizon=10):
 
     rows, flags = [], []
     rev_prev, ppe_prev, nwc_prev = v['revenue0'], v['net_ppe0'], v['nwc0']
+    cap_rd = 'research_asset0' in v
+    if cap_rd:
+        life, rd_hist, ra_prev = int(v['rd_life']), list(v['rd_history']), v['research_asset0']
     for t in range(1, horizon + 1):
         g = gT + (g0 - gT) * phi ** t
         rev = rev_prev * (1 + g)
@@ -363,6 +384,17 @@ def project(assumptions, horizon=10):
         fcff = nopat + dep + amort - capex - dnwc
         ic_prev = ppe_prev + nwc_prev
         net_reinv = capex - dep + dnwc
+        rd = rd_amort = ra = None
+        if cap_rd:
+            rd_ratio = v['rd_ratio_target'] + (v['rd_ratio_start'] - v['rd_ratio_target']) * psi ** t
+            rd = rd_ratio * rev
+            rd_amort = sum(rd_hist[-life:]) / life          # straight-line on the previous L years
+            ra = ra_prev + rd - rd_amort
+            nopat += rd - rd_amort                           # R&D added back, amortisation charged
+            net_reinv += rd - rd_amort                       # ... and treated as investment
+            ic_prev += ra_prev
+            rd_hist.append(rd)
+            ra_prev = ra
         rows.append({
             'year': v['year0'] + t, 't': t, 'revenue': rev, 'growth': g, 'ebit': ebit,
             'ebit_margin': margin, 'tax_rate': tax, 'nopat': nopat, 'depreciation': dep,
@@ -370,7 +402,8 @@ def project(assumptions, horizon=10):
             'ppe_intensity': ppe / rev, 'nwc': nwc, 'nwc_ratio': nwc_ratio, 'delta_nwc': dnwc,
             'net_reinvestment': net_reinv,
             'reinvestment_rate': net_reinv / nopat if nopat > 0 else None,
-            'invested_capital': ppe + nwc,
+            'invested_capital': ppe + nwc + (ra or 0.0), 'rd': rd, 'rd_amortization': rd_amort,
+            'research_asset': ra,
             'roic': nopat / ic_prev if ic_prev > 0 else None, 'fcff': fcff,
             # compatibility with the existing 5-year engine / dashboard tables
             'da_ratio': (dep + amort) / rev, 'capex_ratio': capex / rev,
@@ -389,6 +422,9 @@ def terminal_value(projection, assumptions):
     g, wacc, mode = v['terminal_growth'], v['wacc'], v['ronic']
     rev = last['revenue'] * (1 + g)
     nopat = rev * last['ebit_margin'] * (1 - v['tax_terminal'])
+    if last.get('research_asset') is not None:
+        # steady state: R&D - amortisation = growth of the research asset = g * asset
+        nopat += g * last['research_asset']
     if nopat <= 0:
         raise ValueError('Terminal NOPAT is not positive: no going-concern terminal value')
     notes = []
@@ -396,6 +432,8 @@ def terminal_value(projection, assumptions):
         # Net investment needed to grow revenue at g while holding final-year
         # Net PP&E / revenue and operating NWC / revenue constant.
         reinvest = g * last['revenue'] * (last['ppe_intensity'] + last['nwc_ratio'])
+        if last.get('research_asset') is not None:
+            reinvest += g * last['research_asset']           # research asset must grow at g too
         rr = reinvest / nopat
         if rr < 0:
             notes.append('Steady-state reinvestment negative (NWC release exceeds PP&E needs); floored at 0.')
@@ -409,7 +447,7 @@ def terminal_value(projection, assumptions):
             raise ValueError('RONIC must exceed terminal growth')
         rr = g / ronic if g > 0 else 0.0
     if ronic is not None and ronic > 3 * wacc:
-        notes.append(f'Terminal assumes new capital earns {ronic:.0%} on tangible operating capital forever '
+        notes.append(f'Terminal assumes new capital earns {ronic:.0%} on operating capital forever '
                      '(moat persists); compare with the conservative scenario (RONIC = WACC).')
     fcff = nopat * (1 - rr)
     return {'revenue': rev, 'nopat': nopat, 'ronic': ronic, 'reinvestment_rate': rr, 'mode': mode,
@@ -438,6 +476,12 @@ def consistency_checks(projection, assumptions, valuation=None):
     v = {k: x['value'] for k, x in assumptions['drivers'].items()}
     rows = projection['rows']
     last, issues = rows[-1], list(projection['flags'])
+    for r in rows:   # identity: capitalising R&D must not change cash flow
+        if r['rd'] is not None:
+            reported_nopat = r['nopat'] - (r['rd'] - r['rd_amortization'])
+            cash = reported_nopat + r['da'] - r['capex'] - r['delta_nwc']
+            if abs(cash - r['fcff']) > 1e-6 * max(1.0, abs(r['fcff'])):
+                raise AssertionError('R&D capitalisation changed FCFF')
     for r in rows:   # identity: PP&E roll-forward must hold exactly
         prev = rows[r['t'] - 2]['net_ppe'] if r['t'] > 1 else v['net_ppe0']
         if abs(prev + r['capex'] - r['depreciation'] - r['net_ppe']) > 1e-6 * max(1.0, abs(prev)):
@@ -468,11 +512,12 @@ def consistency_checks(projection, assumptions, valuation=None):
 
 
 def run(history, *, wacc, terminal_growth, net_debt, shares, scenario='base',
-        horizon=10, overrides=None, calibration='auto', mid_year=False):
+        horizon=10, overrides=None, calibration='auto', mid_year=False, rd_life=None, rd_life_note=''):
     """Full pipeline. Returns a dict even when BLOCKED (then without valuation)."""
     cal = load_calibration() if calibration == 'auto' else calibration
     a = derive_assumptions(history, wacc=wacc, terminal_growth=terminal_growth,
-                           scenario=scenario, calibration=cal, overrides=overrides)
+                           scenario=scenario, calibration=cal, overrides=overrides,
+                           rd_life=rd_life, rd_life_note=rd_life_note)
     out = {'assumptions': a, 'status': a['status'], 'validated': False}
     if a['status'] == 'BLOCKED':
         return out

@@ -14,7 +14,7 @@ import json
 import os
 
 import driver_forecast_27 as dm
-from operating_capital_27 import build_capital_history
+from operating_capital_27 import build_capital_history, rd_life_for_sic
 from sec_annual_27 import companyfacts_cached, is_number, submissions_cached
 from universal_financial_23b import normalize_balance_23b
 from universal_financial_23c import analyze_historical_23c
@@ -38,7 +38,8 @@ def load_inputs(ticker, last_n=10):
     decision = classify_sic(sic)
     hist = analyze_historical_23c(payload, last_n=last_n)
     ends = [r['Fiscal year end'] for r in hist['rows']]
-    capital = build_capital_history(payload, ends)
+    rd_life, rd_note = rd_life_for_sic(sic)
+    capital = build_capital_history(payload, ends, rd_life=rd_life)
     history = dm.merge_history(hist['rows'], capital)
     bal = normalize_balance_23b(payload, ends[-1:])[-1]
     cap = capital[-1]
@@ -66,7 +67,16 @@ def load_inputs(ticker, last_n=10):
                               - sum(nonop.values()))
     else:
         bridge['net_debt'] = None
+    from sec_annual_27 import annual_flows
+    dil = annual_flows(payload, ('WeightedAverageNumberOfDilutedSharesOutstanding',), unit='shares')
+    if ends[-1] in dil:
+        bridge['basic_shares_snapshot'] = bridge['shares']
+        bridge['shares'] = dil[ends[-1]]['value']
+        bridge['shares_source'] = f'diluted weighted average, FY {ends[-1]}'
+    else:
+        bridge['shares_source'] = 'BASIC cover-page snapshot (no diluted count for latest FY)'
     return {'cik': cik, 'name': name, 'sic': sic, 'decision': decision, 'history': history,
+            'rd_life': rd_life, 'rd_note': rd_note,
             'bridge': bridge, 'capital_flags': cap.get('flags', [])}
 
 
@@ -114,6 +124,7 @@ def main():
     ap.add_argument('--override', action='append', default=[], help='driver=value (decimal)')
     ap.add_argument('--shares', type=float, help='diluted shares (overrides SEC basic snapshot)')
     ap.add_argument('--mid-year', action='store_true')
+    ap.add_argument('--no-rd', action='store_true', help='do not capitalise R&D (comparison)')
     ap.add_argument('--json', help='write full results to this file')
     args = ap.parse_args()
 
@@ -132,7 +143,7 @@ def main():
     print(f"Balance date {br['balance_date']} · net debt {_b(br['net_debt']).strip()}B "
           f"(debt − cash − ST investments) · shares {shares:,.0f}" if shares else 'Shares unavailable')
     if not args.shares:
-        print('  ! Shares = SEC cover-page BASIC snapshot, not diluted. Pass --shares for diluted count.')
+        print(f"  Shares: {br['shares_source']}")
     print(f"  Debt source: {br['debt_source']}")
     for k, v in br['non_operating_assets'].items():
         print(f'  + {k} credited at book value: {v / 1e9:,.2f}B (VERIFY that its income is excluded from EBIT)')
@@ -148,7 +159,8 @@ def main():
     for s in scenarios:
         out = dm.run(data['history'], wacc=args.wacc, terminal_growth=args.g, net_debt=br['net_debt'],
                      shares=shares, scenario=s, horizon=args.horizon, overrides=overrides,
-                     mid_year=args.mid_year)
+                     mid_year=args.mid_year, rd_life=None if args.no_rd else data['rd_life'],
+                     rd_life_note=data['rd_note'])
         results[s] = out
         a = out['assumptions']
         print(f"\n=== {s.upper()} · status {out['status']} · validated={out['validated']} ===")

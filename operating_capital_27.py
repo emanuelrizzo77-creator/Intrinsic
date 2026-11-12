@@ -44,8 +44,10 @@ DEPRECIATION = ('Depreciation',)
 AMORTIZATION = ('AmortizationOfIntangibleAssets',)
 
 
-def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None):
+def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None, rd_life=None):
     kw = {'vintage': vintage, 'as_of': as_of}
+    rd_all = rd_series(payload, **kw) if rd_life else []
+    rd_by_end = dict(rd_all)
     pts = {name: annual_points(payload, tags, **kw) for name, tags in {
         'ppe': PPE_TAGS, 'ca': CURRENT_ASSETS, 'cl': CURRENT_LIABILITIES, 'cash': CASH,
         'sti': SHORT_TERM_INVESTMENTS, 'cash_sti': CASH_AND_STI_TOTAL, 'mkt_cur': MARKETABLE_CURRENT,
@@ -136,9 +138,63 @@ def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None)
         else:
             row['Operating NWC'] = None
             row['flags'].append('MISSING: current assets/liabilities or cash; operating NWC unavailable')
+        row['R&D'] = rd_by_end.get(end)
+        ra = research_asset(rd_all, end, rd_life) if rd_life else None
+        row['Research asset'] = ra['research_asset'] if ra else None
+        row['R&D amortization'] = ra['rd_amortization'] if ra else None
+        row['R&D history'] = ra['rd_history'] if ra else None
         if is_number(ppe) and is_number(row['Operating NWC']):
             row['Operating invested capital'] = ppe + row['Operating NWC']
         else:
             row['Operating invested capital'] = None
         rows.append(row)
     return rows
+
+
+# ------------------------------------------------------------------
+# R&D capitalisation (Damodaran): R&D is an investment, amortised straight-line
+# ------------------------------------------------------------------
+RD_TAGS = ('ResearchAndDevelopmentExpense', 'ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost')
+
+
+def rd_life_for_sic(sic):
+    """Amortisable life of R&D by industry (assumption, editable via override)."""
+    try:
+        n = int(sic)
+    except (TypeError, ValueError):
+        return 5, 'default'
+    if 2833 <= n <= 2836:
+        return 10, 'pharma/biotech'
+    if 7370 <= n <= 7379:
+        return 3, 'software/services'
+    if 3570 <= n <= 3579 or 3660 <= n <= 3679:
+        return 5, 'computers/semiconductors/electronics'
+    return 5, 'default'
+
+
+def rd_series(payload, *, vintage='latest', as_of=None):
+    """[(fiscal_end, R&D)] sorted, ~12-month annual values."""
+    flows = annual_flows(payload, RD_TAGS, vintage=vintage, as_of=as_of)
+    return [(end, flows[end]['value']) for end in sorted(flows)]
+
+
+def research_asset(series, end, life):
+    """Unamortised research asset and current-year amortisation at fiscal end.
+
+    asset_t = sum_{j=0}^{L-1} RD_{t-j} * (1 - j/L);  amort_t = sum_{j=1}^{L} RD_{t-j} / L
+    Requires L+1 consecutive annual observations ending at `end`, else None.
+    """
+    from sec_annual_27 import consecutive
+    ends = [e for e, _ in series]
+    if end not in ends:
+        return None
+    i = ends.index(end)
+    if i < life:
+        return None
+    window = series[i - life:i + 1]
+    if any(not consecutive(a[0], b[0]) for a, b in zip(window, window[1:])):
+        return None
+    rd = [v for _, v in reversed(window)]          # rd[0] = current year
+    return {'research_asset': sum(rd[j] * (1 - j / life) for j in range(life)),
+            'rd_amortization': sum(rd[j] / life for j in range(1, life + 1)),
+            'rd_history': list(reversed(rd[:life])), 'rd': rd[0]}   # oldest -> newest, last L years
