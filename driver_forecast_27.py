@@ -84,6 +84,14 @@ def merge_history(rows_23c, capital_rows):
                     'Current debt', 'Cash', 'R&D', 'Research asset', 'R&D amortization', 'R&D history',
                     'Finance-lease ROU additions', 'Finance lease liabilities'):
             merged[key] = c.get(key)
+        # Operating margin BEFORE amortisation of acquired intangibles (EBITA): the
+        # forecast fades this margin and charges the (running-off) amortisation
+        # separately, so EBIT rises as acquired intangibles are amortised away.
+        am, ebit, rev = merged.get('Amortization'), merged.get('EBIT'), merged.get('Revenue')
+        if is_number(ebit) and is_number(rev) and rev > 0:
+            merged['EBITA margin'] = (ebit + (am if is_number(am) else 0.0)) / rev
+        else:
+            merged['EBITA margin'] = None
         merged['capital_flags'] = list(c.get('flags', []))
         merged['capital_tags'] = dict(c.get('tags', {}))
         out.append(merged)
@@ -153,7 +161,8 @@ def historical_diagnostics(history):
         'dep_rates': dep_rates, 'dep_method': sorted(methods),
         'capex_reconciliation': capex_recon, 'ppe_leakage': leakage,
         'ppe_intensity': ratio('Net PP&E'), 'nwc_ratio': ratio('Operating NWC'),
-        'margins': [r['EBIT margin'] for r in h if is_number(r.get('EBIT margin'))],
+        'margins': [r.get('EBITA margin', r.get('EBIT margin')) for r in h
+                    if is_number(r.get('EBITA margin', r.get('EBIT margin')))],
         'tax_rates': [r['Effective tax rate'] for r in h if is_number(r.get('Effective tax rate'))],
         'roic_ex_goodwill': roic,
         'latest_amortization': amorts[-1] if amorts else None,
@@ -227,7 +236,10 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     if not cal:
         degraded.append('No calibration_27.json: fade speeds are provisional assumptions')
 
-    m0 = last.get('EBIT margin')
+    m0 = last.get('EBITA margin', last.get('EBIT margin'))
+    if last.get('EBIT source') == 'derived':
+        degraded.append('No OperatingIncomeLoss tag: EBIT derived as pretax income + interest expense '
+                        '− interest income (includes other non-operating items)')
     if not is_number(m0):
         blockers.append('Latest EBIT margin unavailable')
     elif m0 <= 0:
@@ -236,7 +248,7 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     # calibrate the fade weight (calibrate_fade_27.py); falls back to all years.
     prior = lambda xs: xs[:-1] if len(xs) >= 4 else xs
     m_star = _med(prior(diag['margins']))
-    d['margin_start'] = _drv(m0, 'data', 'latest fiscal year')
+    d['margin_start'] = _drv(m0, 'data', 'latest fiscal year, operating margin before acquired-intangible amortisation')
     d['margin_target'] = _drv(m_star, 'data',
                               f"company median of {len(prior(diag['margins']))} prior years; no industry shrinkage yet")
 
@@ -401,9 +413,8 @@ def project(assumptions, horizon=10):
             rev = base_rev * math.exp(v['revenue_band'][hb])
             margin += v['margin_band'][hb]
             g = rev / rev_prev - 1
-        ebit = rev * margin
+        ebita = rev * margin
         tax = v['tax_start'] + (v['tax_terminal'] - v['tax_start']) * t / horizon
-        nopat = ebit * (1 - tax) if ebit > 0 else ebit   # no tax credit assumed on losses
         k = kT + (k0 - kT) * psik ** t
         dep = v['dep_rate'] * ppe_prev
         ppe = k * rev
@@ -415,6 +426,8 @@ def project(assumptions, horizon=10):
         leak = v.get('ppe_leakage', 0.0) * ppe_prev
         capex += leak                               # cash spent to replace PP&E that leaves without depreciation
         amort = v['amortization0'] * max(0.0, 1 - t / AMORT_RUNOFF_YEARS)
+        ebit = ebita - amort
+        nopat = ebit * (1 - tax) if ebit > 0 else ebit   # no tax credit assumed on losses
         nwc_ratio = nT + (n0 - nT) * psi ** t
         nwc = nwc_ratio * rev
         dnwc = nwc - nwc_prev
@@ -434,7 +447,7 @@ def project(assumptions, horizon=10):
             ra_prev = ra
         rows.append({
             'year': v['year0'] + t, 't': t, 'revenue': rev, 'growth': g, 'ebit': ebit,
-            'ebit_margin': margin, 'tax_rate': tax, 'nopat': nopat, 'depreciation': dep,
+            'ebit_margin': ebit / rev, 'ebita_margin': margin, 'tax_rate': tax, 'nopat': nopat, 'depreciation': dep,
             'amortization': amort, 'da': dep + amort, 'capex': capex, 'net_ppe': ppe,
             'ppe_intensity': ppe / rev, 'nwc': nwc, 'nwc_ratio': nwc_ratio, 'delta_nwc': dnwc,
             'net_reinvestment': net_reinv,
@@ -458,7 +471,7 @@ def terminal_value(projection, assumptions):
     last = projection['rows'][-1]
     g, wacc, mode = v['terminal_growth'], v['wacc'], v['ronic']
     rev = last['revenue'] * (1 + g)
-    nopat = rev * last['ebit_margin'] * (1 - v['tax_terminal'])
+    nopat = rev * last['ebita_margin'] * (1 - v['tax_terminal'])
     if last.get('research_asset') is not None:
         # steady state: R&D - amortisation = growth of the research asset = g * asset
         nopat += g * last['research_asset']
@@ -528,7 +541,7 @@ def consistency_checks(projection, assumptions, valuation=None):
     if abs(last['growth'] - v['terminal_growth']) > 0.005:
         issues.append(f"Not at steady state: year-{last['t']} growth {last['growth']:.1%} vs terminal "
                       f"{v['terminal_growth']:.1%}. Extend horizon or revisit growth fade.")
-    if abs(last['ebit_margin'] - v['margin_target']) > 0.01:
+    if abs(last['ebita_margin'] - v['margin_target']) > 0.01:
         issues.append('Margin still converging in final year; terminal margin is not the long-run target.')
     if valuation:
         rr_term, rr_last = valuation['terminal']['reinvestment_rate'], last['reinvestment_rate']

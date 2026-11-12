@@ -24,6 +24,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def lookup_cik(ticker):
+    ticker = ticker.upper().replace('.', '-')
+    path = os.path.join(HERE, 'cik_overrides_27.json')
+    if os.path.exists(path):
+        with open(path) as fh:
+            over = json.load(fh).get(ticker)
+        if over:
+            return int(over['cik']), ticker + ' (registrant override: ' + over['reason'][:60] + '...)'
     with open(os.path.join(HERE, 'intrinsic_sec_companies.csv')) as fh:
         for row in csv.DictReader(fh):
             if row['ticker'].upper() == ticker.upper():
@@ -36,7 +43,27 @@ def load_inputs(ticker, last_n=10):
     payload = companyfacts_cached(cik)
     sic = submissions_cached(cik).get('sic')
     decision = classify_sic(sic)
+    from sec_annual_27 import annual_flows, annual_points
     hist = analyze_historical_23c(payload, last_n=last_n)
+    if len(hist['rows']) < 3:
+        raise ValueError(f"{payload.get('entityName', ticker)} has fewer than 3 annual revenue observations in SEC "
+                         'CompanyFacts (new registrant or holding company?). Add a registrant mapping in '
+                         'cik_overrides_27.json if the history is filed under another CIK.')
+    # EBIT fallback when OperatingIncomeLoss is not reported (common in pharma):
+    # pretax income + interest expense - interest income. Flagged as derived.
+    pretax = annual_flows(payload, ('IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
+                                    'IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments',
+                                    'IncomeLossFromContinuingOperationsBeforeIncomeTaxes'))
+    int_exp = annual_flows(payload, ('InterestExpense', 'InterestExpenseNonoperating', 'InterestExpenseDebt'))
+    int_inc = annual_flows(payload, ('InvestmentIncomeInterest', 'InvestmentIncomeInterestAndDividend'))
+    for r in hist['rows']:
+        r['EBIT source'] = 'OperatingIncomeLoss' if is_number(r.get('EBIT')) else None
+        end = r['Fiscal year end']
+        if not is_number(r.get('EBIT')) and end in pretax and end in int_exp:
+            r['EBIT'] = pretax[end]['value'] + int_exp[end]['value'] - int_inc.get(end, {}).get('value', 0.0)
+            r['EBIT source'] = 'derived'
+            if is_number(r.get('Revenue')) and r['Revenue'] > 0:
+                r['EBIT margin'] = r['EBIT'] / r['Revenue']
     ends = [r['Fiscal year end'] for r in hist['rows']]
     rd_life, rd_note = rd_life_for_sic(sic)
     capital = build_capital_history(payload, ends, rd_life=rd_life)
@@ -45,12 +72,13 @@ def load_inputs(ticker, last_n=10):
     cap = capital[-1]
     total_debt, debt_source = bal.get('Total debt'), 'SEC 23B'
     if total_debt is None:
-        from sec_annual_27 import annual_points
         pts = lambda tags: annual_points(payload, tags).get(ends[-1], {}).get('value')
         carrying = pts(('DebtInstrumentCarryingAmount',))
         cur, nonc = pts(('DebtCurrent', 'LongTermDebtCurrent')), pts(('LongTermDebtNoncurrent',))
-        if is_number(cur) and is_number(nonc):
-            total_debt, debt_source = cur + nonc, 'derived: current + noncurrent debt'
+        stb = pts(('ShortTermBorrowings', 'CommercialPaper'))
+        if is_number(nonc) and (is_number(cur) or is_number(stb)):
+            total_debt = nonc + (cur if is_number(cur) else 0.0) + (stb if is_number(stb) and not is_number(cur) else 0.0)
+            debt_source = 'derived: noncurrent debt + current debt / short-term borrowings'
         elif is_number(carrying):
             total_debt, debt_source = carrying, 'DebtInstrumentCarryingAmount (VERIFY: excludes leases)'
     fll = cap.get('Finance lease liabilities')
@@ -72,7 +100,6 @@ def load_inputs(ticker, last_n=10):
                               - sum(nonop.values()))
     else:
         bridge['net_debt'] = None
-    from sec_annual_27 import annual_flows
     dil = annual_flows(payload, ('WeightedAverageNumberOfDilutedSharesOutstanding',), unit='shares')
     if ends[-1] in dil:
         bridge['basic_shares_snapshot'] = bridge['shares']

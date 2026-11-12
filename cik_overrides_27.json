@@ -1,0 +1,4 @@
+{
+  "_doc": "Ticker -> CIK of the registrant that holds the reported financial history. Used ONLY when the SEC ticker directory points to a new entity without annual statements (e.g. a newly formed holding company). Data mapping, not a valuation assumption.",
+  "XOM": {"cik": 34088, "reason": "SEC directory maps XOM to ExxonMobil Holdings Corporation (no annual statements in CompanyFacts); history is filed under Exxon Mobil Corp (CIK 34088)."}
+}

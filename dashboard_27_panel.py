@@ -112,8 +112,9 @@ def _sidebar_inputs(ticker, probe):
     fields = (
         ('year1', 'Revenue growth next year (%)', year1,
          'Model estimate for next year. Growth then slows toward the terminal rate at the calibrated speed.'),
-        ('margin_target', 'Long-run EBIT margin (%)', v.get('margin_target'),
-         'Operating margin the business converges to. Default: median of the company\'s prior 9 years.'),
+        ('margin_target', 'Long-run operating margin (%)', v.get('margin_target'),
+         'Operating margin before amortisation of acquired intangibles that the business converges to. '
+         'Default: median of the company\'s prior 9 years.'),
         ('intensity_target', 'Fixed assets per $ of revenue (%)', v.get('intensity_target'),
          'Net PP&E / revenue in the long run. Higher = more capital-intensive = more CapEx to grow.'),
         ('nwc_ratio_target', 'Working capital % of revenue (%)', v.get('nwc_ratio_target'),
@@ -387,6 +388,9 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         st.error(f"Not valued with FCFF: {data['decision'].get('category')} — {data['decision'].get('reason')}")
         return
     br = data['bridge']
+    if not br['shares'] and market_shares:
+        br['shares'] = float(market_shares)
+        br['shares_source'] = 'market data (SEC reports shares by class only) — verify share class'
     if br['net_debt'] is None or not br['shares']:
         st.error('Valuation blocked: the debt, cash or share count could not be verified from SEC filings.')
         return
