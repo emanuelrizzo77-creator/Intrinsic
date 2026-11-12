@@ -76,10 +76,20 @@ def obtener_datos_wacc(ticker="MSFT"):
     deuda_corto = balance.get("Current Debt")
 
     if deuda_largo is None or deuda_corto is None:
-        raise ValueError(
-            "Missing SEC debt data. "
-            "Automatic WACC cannot be calculated."
-        )
+        # Intrinsic 27 fallback: the model's audited bridge has broader debt-tag
+        # coverage (short-term borrowings, carrying amounts, finance leases).
+        from run_driver_27 import load_inputs
+        br = load_inputs(ticker)["bridge"]
+        if br.get("total_debt") is None:
+            raise ValueError("Missing SEC debt data. Automatic WACC cannot be calculated.")
+        return {
+            "ticker": ticker, "beta": float(beta), "beta_adjusted": 0.67 * float(beta) + 0.33,
+            "market_equity": float(market_cap), "total_debt": float(br["total_debt"]),
+            "market_price": mercado.get("price"), "shares": mercado.get("shares"),
+            "market_date": mercado.get("retrieved_at"), "debt_date": br["balance_date"],
+            "debt_source": "Model 27 bridge: " + str(br.get("debt_source")),
+            "currency": mercado["currency"], "historical_kd": None,
+        }
 
     if deuda_largo["date"] != deuda_corto["date"]:
         raise ValueError(
@@ -135,6 +145,7 @@ def obtener_datos_wacc(ticker="MSFT"):
     return {
         "ticker": ticker,
         "beta": float(beta),
+        "beta_adjusted": 0.67 * float(beta) + 0.33,
         "market_equity": float(market_cap),
         "total_debt": float(total_debt),
         "market_price": mercado.get("price"),

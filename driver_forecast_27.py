@@ -329,7 +329,26 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     d['wacc'] = _drv(wacc, 'user')
 
     bands = cal.get('scenario_bands') or {}
-    if scenario != 'base' and bands:
+    scaled = cal.get('scenario_bands_scaled') or {}
+    from statistics import pstdev
+    floors = cal.get('sigma_floors', {'growth': 0.03, 'margin': 0.01})
+    gs = [r['Revenue growth'] for r in h if is_number(r.get('Revenue growth'))][-9:]
+    ms = [r.get('EBITA margin', r.get('EBIT margin')) for r in h
+          if is_number(r.get('EBITA margin', r.get('EBIT margin')))][-10:]
+    if scenario != 'base' and scaled and len(gs) >= 3 and len(ms) >= 3:
+        # Bands scaled by the company's own volatility: z-quantiles x company sigma.
+        high_t = (cal.get('growth_fade_high') or {}).get('threshold', 0.25)
+        group = 'high_growth' if (is_number(g0) and g0 > high_t and 'high_growth' in scaled) else 'all'
+        k = 0 if scenario == 'conservative' else 1
+        sg, sm = max(floors['growth'], pstdev(gs)), max(floors['margin'], pstdev(ms))
+        tbl = scaled[group]
+        d['revenue_band'] = _drv([tbl[str(i)]['revenue_z'][k] * sg for i in range(1, 6)], 'calibrated',
+                                 f'{scenario}: p{20 if k == 0 else 80} revenue error scaled by company growth '
+                                 f'volatility ({sg:.1%}); {group}; held after year 5')
+        d['margin_band'] = _drv([tbl[str(i)]['margin_z'][k] * sm for i in range(1, 6)], 'calibrated',
+                                f'{scenario}: p{20 if k == 0 else 80} margin error scaled by company margin '
+                                f'volatility ({sm:.1%}); held after year 5')
+    elif scenario != 'base' and bands:
         # Horizon-specific p20/p80 bands of the calibrated forecast error (validated
         # out of sample: revenue coverage 54-62% for a 60% band). Revenue level and
         # margin are shifted together, so the combined scenario is more extreme than p20/p80.

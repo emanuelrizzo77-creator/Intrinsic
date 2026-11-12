@@ -43,6 +43,7 @@ REVENUE_TAGS = tuple(TAGS_21B['Revenue']) + ('RevenueFromContractWithCustomerInc
 HORIZONS = (1, 2, 3, 4, 5)
 MIN_REVENUE = 1e8          # origins below $100M revenue are excluded (shells, pre-revenue)
 EXCHANGES = {'NYSE', 'Nasdaq'}
+SIGMA_FLOOR_GROWTH, SIGMA_FLOOR_MARGIN = 0.03, 0.01   # minimum company volatility for scaled bands
 HIGH_GROWTH = 0.25          # starting growth above this gets its own fade estimate
 
 
@@ -316,8 +317,12 @@ def production():
         'growth_fade_high': fit({h: [s for s in rows if s[0] + center > HIGH_GROWTH] for h, rows in gs.items()}).get('all'),
     }
     out['growth_fade_high']['threshold'] = HIGH_GROWTH
-    # Horizon-specific residual quantiles of the production fade forecast
+    # Horizon-specific residual quantiles of the production fade forecast, both raw and
+    # scaled by the company's own historical volatility (validated: coverage closer to target,
+    # especially for low-margin companies — see scenario coverage analysis 2026-11-12).
+    from statistics import pstdev
     errs = {'all': {}, 'high_growth': {}}
+    zerrs = {'all': {}, 'high_growth': {}}
     for run in runs:
         for i, r in enumerate(run):
             if r['g'] is None or r['rev'] < MIN_REVENUE:
@@ -337,6 +342,12 @@ def production():
                     rec[1] = t['m'] - (a + (r['m'] - a) * mphi ** h)
                 for group in ('all', 'high_growth') if high else ('all',):
                     errs[group].setdefault(h, []).append(rec)
+                pg = [z['g'] for z in run[max(1, i - 8):i + 1] if z['g'] is not None]
+                if len(pg) >= 3 and rec[1] is not None and r['m'] is not None:
+                    sg = max(SIGMA_FLOOR_GROWTH, pstdev(pg))
+                    sm = max(SIGMA_FLOOR_MARGIN, pstdev(past_m + [r['m']]))
+                    for group in ('all', 'high_growth') if high else ('all',):
+                        zerrs[group].setdefault(h, []).append((rec[0] / sg, rec[1] / sm))
     bands = {}
     for group, by_h in errs.items():
         if len(by_h.get(5, [])) < 100:
@@ -346,6 +357,12 @@ def production():
                                             _q([e[1] for e in v if e[1] is not None], .8)],
                                  'n': len(v)} for h, v in sorted(by_h.items())}
     out['scenario_bands'] = bands
+    out['scenario_bands_scaled'] = {
+        group: {str(h): {'revenue_z': [_q([e[0] for e in v], .2), _q([e[0] for e in v], .8)],
+                         'margin_z': [_q([e[1] for e in v], .2), _q([e[1] for e in v], .8)], 'n': len(v)}
+                for h, v in sorted(by_h.items())}
+        for group, by_h in zerrs.items() if len(by_h.get(5, [])) >= 100}
+    out['sigma_floors'] = {'growth': SIGMA_FLOOR_GROWTH, 'margin': SIGMA_FLOOR_MARGIN}
     with open(os.path.join(HERE, 'calibration_27.json'), 'w') as fh:
         json.dump(out, fh, indent=2)
     print(f"Production calibration · {len(ciks)} companies · growth phi(all) {out['growth_fade']['all']['phi']:.2f} · "

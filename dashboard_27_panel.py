@@ -186,6 +186,15 @@ def _overview(results, scen, wacc, market_price, market_shares, data):
                       xaxis_title='USD per share', legend=dict(orientation='h', y=-0.45))
     st.plotly_chart(fig, use_container_width=True)
 
+    missing = [s for s in SCENARIOS if prices[s] is None]
+    if missing:
+        st.warning('Not valued: ' + ', '.join(m.capitalize() for m in missing) + ' scenario — '
+                   + '; '.join(str(results[m].get('valuation_error', 'no positive terminal operating profit'))
+                               for m in missing) + '.')
+    if lo is None or hi is None:
+        known = [p for p in prices.values() if p is not None]
+        lo = lo if lo is not None else min(known)
+        hi = hi if hi is not None else max(known)
     if hi is not None and market_price > hi:
         verdict = (f'The market price (${market_price:,.2f}) is ABOVE even the optimistic scenario (${hi:,.2f}): '
                    'the market expects more growth, margin or longer-lasting advantages than the model\'s optimistic case.')

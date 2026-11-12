@@ -369,12 +369,15 @@ if wacc_mode == "Automatic Calculation":
     ) / 100
 
     beta = st.sidebar.number_input(
-        "Beta",
+        "Beta (adjusted)",
         min_value=0.0,
         max_value=5.0,
-        value=float(datos_wacc["beta"]),
+        value=float(datos_wacc.get("beta_adjusted", datos_wacc["beta"])),
         step=0.05,
-        key=f"wacc_beta_{ticker}"
+        key=f"wacc_beta_{ticker}",
+        help=(f"Raw market beta from Yahoo Finance: {datos_wacc['beta']:.2f}. Default uses the standard "
+              "Blume adjustment (0.67 × raw + 0.33), which corrects the tendency of extreme betas to "
+              "move toward 1 over time. You can type the raw value or your own estimate."),
     )
 
     equity_risk_premium = st.sidebar.number_input(

@@ -21,9 +21,9 @@
   "margin_target": 0.4255,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 148.71,
+  "price_conservative": 163.79,
   "price_base": 239.44,
-  "price_optimistic": 354.24,
+  "price_optimistic": 302.36,
   "result": "OK"
  },
  {
@@ -48,9 +48,9 @@
   "margin_target": 0.2978,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 72.4,
+  "price_conservative": 75.82,
   "price_base": 130.91,
-  "price_optimistic": 208.0,
+  "price_optimistic": 184.63,
   "result": "OK"
  },
  {
@@ -75,9 +75,9 @@
   "margin_target": 0.3272,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 28.24,
+  "price_conservative": 14.71,
   "price_base": 54.98,
-  "price_optimistic": 125.28,
+  "price_optimistic": 405.02,
   "result": "OK"
  },
  {
@@ -102,9 +102,9 @@
   "margin_target": 0.2627,
   "ppe_leakage": 0.006297219844430385,
   "rd_capitalised": true,
-  "price_conservative": 74.28,
+  "price_conservative": 75.11,
   "price_base": 122.14,
-  "price_optimistic": 190.87,
+  "price_optimistic": 173.02,
   "result": "OK"
  },
  {
@@ -129,9 +129,9 @@
   "margin_target": 0.054,
   "ppe_leakage": 0.0,
   "rd_capitalised": false,
-  "price_conservative": 21.12,
+  "price_conservative": 24.59,
   "price_base": 55.76,
-  "price_optimistic": 140.04,
+  "price_optimistic": 105.39,
   "result": "OK"
  },
  {
@@ -156,9 +156,9 @@
   "margin_target": 0.3999,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 232.2,
+  "price_conservative": 197.22,
   "price_base": 372.2,
-  "price_optimistic": 557.53,
+  "price_optimistic": 599.55,
   "result": "OK"
  },
  {
@@ -183,9 +183,9 @@
   "margin_target": 0.3843,
   "ppe_leakage": 0.008955321770259456,
   "rd_capitalised": true,
-  "price_conservative": 30.77,
+  "price_conservative": 17.95,
   "price_base": 60.34,
-  "price_optimistic": 97.23,
+  "price_optimistic": 117.56,
   "result": "OK"
  },
  {
@@ -210,9 +210,9 @@
   "margin_target": 0.0648,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 15.37,
+  "price_conservative": null,
   "price_base": 27.69,
-  "price_optimistic": 59.6,
+  "price_optimistic": 113.77,
   "result": "OK"
  },
  {
@@ -245,9 +245,9 @@
   "margin_target": 0.042,
   "ppe_leakage": 0.009448235729778341,
   "rd_capitalised": false,
-  "price_conservative": null,
+  "price_conservative": 15.13,
   "price_base": 32.05,
-  "price_optimistic": 136.53,
+  "price_optimistic": 50.28,
   "result": "OK"
  },
  {
@@ -272,9 +272,9 @@
   "margin_target": 0.2507,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 108.45,
+  "price_conservative": 105.22,
   "price_base": 242.61,
-  "price_optimistic": 660.96,
+  "price_optimistic": 610.39,
   "result": "DEGRADED"
  },
  {
@@ -321,9 +321,9 @@
   "margin_target": 0.5501,
   "ppe_leakage": 0.0036706869428421605,
   "rd_capitalised": false,
-  "price_conservative": 129.85,
+  "price_conservative": 70.15,
   "price_base": 237.59,
-  "price_optimistic": 358.14,
+  "price_optimistic": 517.58,
   "result": "OK"
  },
  {
@@ -348,9 +348,9 @@
   "margin_target": 0.1133,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 50.21,
+  "price_conservative": null,
   "price_base": 82.02,
-  "price_optimistic": 171.38,
+  "price_optimistic": 309.81,
   "result": "DEGRADED"
  },
  {
@@ -375,9 +375,9 @@
   "margin_target": 0.2776,
   "ppe_leakage": 0.014174571032718747,
   "rd_capitalised": true,
-  "price_conservative": 70.08,
+  "price_conservative": 82.14,
   "price_base": 131.74,
-  "price_optimistic": 216.99,
+  "price_optimistic": 175.48,
   "result": "DEGRADED"
  },
  {
@@ -402,9 +402,9 @@
   "margin_target": 0.3779,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 23.4,
+  "price_conservative": 28.58,
   "price_base": 56.63,
-  "price_optimistic": 104.25,
+  "price_optimistic": 82.89,
   "result": "OK"
  },
  {
@@ -429,9 +429,9 @@
   "margin_target": 0.0335,
   "ppe_leakage": 0.012496956909843383,
   "rd_capitalised": false,
-  "price_conservative": null,
+  "price_conservative": 142.5,
   "price_base": 281.94,
-  "price_optimistic": 1109.74,
+  "price_optimistic": 432.68,
   "result": "OK"
  },
  {
@@ -456,9 +456,9 @@
   "margin_target": 0.1435,
   "ppe_leakage": 0.0,
   "rd_capitalised": false,
-  "price_conservative": 65.62,
+  "price_conservative": 127.04,
   "price_base": 212.09,
-  "price_optimistic": 467.44,
+  "price_optimistic": 277.34,
   "result": "OK"
  },
  {
@@ -483,9 +483,9 @@
   "margin_target": 0.2251,
   "ppe_leakage": 0.009757281553398058,
   "rd_capitalised": true,
-  "price_conservative": 39.68,
+  "price_conservative": 46.28,
   "price_base": 85.73,
-  "price_optimistic": 153.43,
+  "price_optimistic": 121.08,
   "result": "OK"
  },
  {
@@ -510,9 +510,9 @@
   "margin_target": 0.3811,
   "ppe_leakage": 0.003121748178980229,
   "rd_capitalised": true,
-  "price_conservative": 50.11,
+  "price_conservative": 39.11,
   "price_base": 117.04,
-  "price_optimistic": 202.46,
+  "price_optimistic": 209.58,
   "result": "OK"
  },
  {
@@ -545,9 +545,9 @@
   "margin_target": 0.1782,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 12.17,
+  "price_conservative": 7.81,
   "price_base": 25.92,
-  "price_optimistic": 46.4,
+  "price_optimistic": 50.0,
   "result": "OK"
  },
  {
@@ -572,9 +572,9 @@
   "margin_target": 0.2565,
   "ppe_leakage": 0.057169537248391786,
   "rd_capitalised": false,
-  "price_conservative": 15.12,
+  "price_conservative": 16.92,
   "price_base": 31.12,
-  "price_optimistic": 53.41,
+  "price_optimistic": 44.58,
   "result": "OK"
  },
  {
@@ -599,9 +599,9 @@
   "margin_target": 0.0937,
   "ppe_leakage": 0.0,
   "rd_capitalised": true,
-  "price_conservative": 15.23,
+  "price_conservative": null,
   "price_base": 36.93,
-  "price_optimistic": 122.81,
+  "price_optimistic": 148.89,
   "result": "OK"
  }
 ]
