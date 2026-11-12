@@ -88,22 +88,27 @@ def merge_history(rows_23c, capital_rows):
 
 
 def _depreciation_series(h):
-    """Return (pure depreciation per row, amortization per row, method notes)."""
+    """Return (recurring depreciation per row, ACQUIRED-intangible amortization per row, methods).
+
+    Only the AmortizationOfIntangibleAssets tag is treated as run-off amortization.
+    Any other residual of total D&A (finance-lease, content, software amortization)
+    is recurring and stays inside the depreciation base.
+    """
     deps, amorts, methods = [], [], set()
     for r in h:
         da, dep, am = r.get('D&A verified'), r.get('Depreciation'), r.get('Amortization')
-        if is_number(dep):
-            deps.append(dep)
-            amorts.append(da - dep if is_number(da) and da >= dep else (am if is_number(am) else 0.0))
-            methods.add('depreciation tag')
-        elif is_number(da) and is_number(am) and da >= am:
+        if is_number(da) and is_number(am) and da >= am:
             deps.append(da - am)
             amorts.append(am)
-            methods.add('D&A minus amortization')
+            methods.add('total D&A minus acquired-intangible amortization')
         elif is_number(da):
             deps.append(da)
             amorts.append(0.0)
-            methods.add('D&A combined (amortization inside delta)')
+            methods.add('total D&A (no acquired-amortization tag; nothing runs off)')
+        elif is_number(dep):
+            deps.append(dep)
+            amorts.append(am if is_number(am) else 0.0)
+            methods.add('depreciation tag + acquired-intangible amortization tag')
         else:
             deps.append(None)
             amorts.append(None)
@@ -242,8 +247,6 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
                         '(enter a dep_rate override)')
     d['dep_rate'] = _drv(delta, 'data', 'median depreciation / prior-year Net PP&E; method: '
                          + (', '.join(diag['dep_method']) or 'n/a'))
-    if any('combined' in m for m in diag['dep_method']):
-        degraded.append('Depreciation rate includes amortization (no separate tag): D&A may be overstated')
     am0 = diag['latest_amortization']
     d['amortization0'] = _drv(am0 if is_number(am0) else 0.0, 'data' if is_number(am0) else 'assumption',
                               f'acquired-intangible amortization; runs off over {AMORT_RUNOFF_YEARS} years '
