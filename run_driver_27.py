@@ -53,6 +53,11 @@ def load_inputs(ticker, last_n=10):
             total_debt, debt_source = cur + nonc, 'derived: current + noncurrent debt'
         elif is_number(carrying):
             total_debt, debt_source = carrying, 'DebtInstrumentCarryingAmount (VERIFY: excludes leases)'
+    fll = cap.get('Finance lease liabilities')
+    debt_tag = str((bal.get('tags') or {}).get('Total debt', ''))
+    if is_number(total_debt) and is_number(fll) and fll > 0 and 'CapitalLease' not in debt_tag:
+        total_debt += fll
+        debt_source += f' + finance lease liabilities {fll / 1e9:,.2f}B'
     nonop = {k: cap.get(k) for k in ('Equity-method investments', 'Long-term marketable securities')
              if is_number(cap.get(k))}
     bridge = {'total_debt': total_debt, 'debt_source': debt_source, 'cash': cap.get('Cash'),

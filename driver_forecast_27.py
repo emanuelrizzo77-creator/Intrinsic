@@ -81,7 +81,8 @@ def merge_history(rows_23c, capital_rows):
         c = cap.get(r['Fiscal year end'], {})
         for key in ('Net PP&E', 'Operating NWC', 'Operating invested capital', 'Depreciation',
                     'Amortization', 'Goodwill', 'Intangibles', 'Short-term investments',
-                    'Current debt', 'Cash', 'R&D', 'Research asset', 'R&D amortization', 'R&D history'):
+                    'Current debt', 'Cash', 'R&D', 'Research asset', 'R&D amortization', 'R&D history',
+                    'Finance-lease ROU additions', 'Finance lease liabilities'):
             merged[key] = c.get(key)
         merged['capital_flags'] = list(c.get('flags', []))
         merged['capital_tags'] = dict(c.get('tags', {}))
@@ -121,7 +122,7 @@ def historical_diagnostics(history):
     """Ratios and reconciliation checks that inform (not dictate) assumptions."""
     h = sorted(history, key=lambda r: r['Fiscal year end'])
     deps, amorts, methods = _depreciation_series(h)
-    dep_rates, capex_recon, roic = [], [], []
+    dep_rates, capex_recon, roic, leakage = [], [], [], []
     for i in range(1, len(h)):
         p, c = h[i - 1], h[i]
         if not consecutive(p['Fiscal year end'], c['Fiscal year end']):
@@ -132,6 +133,12 @@ def historical_diagnostics(history):
         if (is_number(ppe0) and is_number(ppe1) and is_number(deps[i])
                 and is_number(c.get('CapEx')) and c['CapEx'] > 0):
             capex_recon.append((ppe1 - ppe0 + deps[i]) / c['CapEx'])
+            if ppe0 > 0:
+                # Cash + lease-financed investment not explained by depreciation and the
+                # change in Net PP&E: disposals, impairments, FX translation, refranchising (>0)
+                # or assets arriving without cash/lease (acquisitions, accrued capex) (<0).
+                fin = c.get('Finance-lease ROU additions')
+                leakage.append((c['CapEx'] + (fin if is_number(fin) else 0.0) - deps[i] - (ppe1 - ppe0)) / ppe0)
         ic0, tax = p.get('Operating invested capital'), c.get('Effective tax rate')
         if is_number(ic0) and ic0 > 0 and is_number(c.get('EBIT')) and is_number(tax):
             roic.append(c['EBIT'] * (1 - tax) / ic0)
@@ -144,7 +151,7 @@ def historical_diagnostics(history):
 
     return {
         'dep_rates': dep_rates, 'dep_method': sorted(methods),
-        'capex_reconciliation': capex_recon,
+        'capex_reconciliation': capex_recon, 'ppe_leakage': leakage,
         'ppe_intensity': ratio('Net PP&E'), 'nwc_ratio': ratio('Operating NWC'),
         'margins': [r['EBIT margin'] for r in h if is_number(r.get('EBIT margin'))],
         'tax_rates': [r['Effective tax rate'] for r in h if is_number(r.get('Effective tax rate'))],
@@ -292,10 +299,17 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         notes.append('No R&D tag (or R&D reported under another caption): R&D not capitalised; '
                      'ROIC may be overstated if growth investment is expensed')
 
-    recon = _med(diag['capex_reconciliation'])
-    if recon is not None and not 0.7 <= recon <= 1.3:
-        degraded.append(f'PP&E roll-forward does not reconcile to reported CapEx (median implied/reported '
-                        f'= {recon:.2f}): leases, acquisitions, impairments or FX. Projected CapEx includes these.')
+    leak = _med(diag['ppe_leakage'][-9:])
+    if leak is None:
+        d['ppe_leakage'] = _drv(0.0, 'assumption', 'no CapEx/PP&E history to reconcile')
+    elif leak > 0:
+        d['ppe_leakage'] = _drv(leak, 'data', 'median share of Net PP&E leaving without depreciation each year '
+                                '(FX, impairments, disposals, refranchising); added to projected CapEx')
+        if leak > 0.15:
+            degraded.append(f'Large unexplained PP&E outflows ({leak:.0%} of Net PP&E per year): verify in 10-K')
+    else:
+        d['ppe_leakage'] = _drv(0.0, 'data', f'historical PP&E arrived without cash/lease CapEx ({leak:.1%} of PP&E/yr: '
+                                'acquisitions or accrued capex); economic CapEx (ΔPP&E + depreciation) used')
 
     d['ronic'] = _drv('wacc' if scenario == 'conservative' else 'steady_state', 'assumption',
                       'terminal reinvestment: steady_state = growth at g with final-year capital intensity '
@@ -398,6 +412,8 @@ def project(assumptions, horizon=10):
             flags.append(f'Year {t}: implied CapEx negative; floored at zero '
                          '(capital intensity falling faster than depreciation)')
             capex, ppe = 0.0, ppe_prev - dep
+        leak = v.get('ppe_leakage', 0.0) * ppe_prev
+        capex += leak                               # cash spent to replace PP&E that leaves without depreciation
         amort = v['amortization0'] * max(0.0, 1 - t / AMORT_RUNOFF_YEARS)
         nwc_ratio = nT + (n0 - nT) * psi ** t
         nwc = nwc_ratio * rev
@@ -424,7 +440,7 @@ def project(assumptions, horizon=10):
             'net_reinvestment': net_reinv,
             'reinvestment_rate': net_reinv / nopat if nopat > 0 else None,
             'invested_capital': ppe + nwc + (ra or 0.0), 'rd': rd, 'rd_amortization': rd_amort,
-            'research_asset': ra,
+            'research_asset': ra, 'ppe_leakage': leak,
             'roic': nopat / ic_prev if ic_prev > 0 else None, 'fcff': fcff,
             # compatibility with the existing 5-year engine / dashboard tables
             'da_ratio': (dep + amort) / rev, 'capex_ratio': capex / rev,
@@ -470,8 +486,10 @@ def terminal_value(projection, assumptions):
     if ronic is not None and ronic > 3 * wacc:
         notes.append(f'Terminal assumes new capital earns {ronic:.0%} on operating capital forever '
                      '(moat persists); compare with the conservative scenario (RONIC = WACC).')
-    fcff = nopat * (1 - rr)
+    leak_cost = v.get('ppe_leakage', 0.0) * last['net_ppe'] * (1 + g)
+    fcff = nopat * (1 - rr) - leak_cost
     return {'revenue': rev, 'nopat': nopat, 'ronic': ronic, 'reinvestment_rate': rr, 'mode': mode,
+            'ppe_leakage_cost': leak_cost,
             'notes': notes, 'fcff': fcff, 'terminal_value': fcff / (wacc - g)}
 
 
@@ -505,7 +523,7 @@ def consistency_checks(projection, assumptions, valuation=None):
                 raise AssertionError('R&D capitalisation changed FCFF')
     for r in rows:   # identity: PP&E roll-forward must hold exactly
         prev = rows[r['t'] - 2]['net_ppe'] if r['t'] > 1 else v['net_ppe0']
-        if abs(prev + r['capex'] - r['depreciation'] - r['net_ppe']) > 1e-6 * max(1.0, abs(prev)):
+        if abs(prev + r['capex'] - r['depreciation'] - r['ppe_leakage'] - r['net_ppe']) > 1e-6 * max(1.0, abs(prev)):
             raise AssertionError('PP&E roll-forward identity violated')
     if abs(last['growth'] - v['terminal_growth']) > 0.005:
         issues.append(f"Not at steady state: year-{last['t']} growth {last['growth']:.1%} vs terminal "

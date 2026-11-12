@@ -41,6 +41,9 @@ SHORT_BORROWINGS = ('ShortTermBorrowings', 'CommercialPaper')
 GOODWILL = ('Goodwill',)
 INTANGIBLES = ('IntangibleAssetsNetExcludingGoodwill', 'FiniteLivedIntangibleAssetsNet')
 DEPRECIATION = ('Depreciation',)
+FIN_LEASE_ROU_ADDITIONS = ('RightOfUseAssetObtainedInExchangeForFinanceLeaseLiability',)
+FIN_LEASE_LIABILITY = ('FinanceLeaseLiability',)
+FIN_LEASE_PARTS = (('FinanceLeaseLiabilityCurrent',), ('FinanceLeaseLiabilityNoncurrent',))
 AMORTIZATION = ('AmortizationOfIntangibleAssets',)
 
 
@@ -55,10 +58,12 @@ def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None,
         'ltm': NONOPERATING_LONG_TERM['Long-term marketable securities'],
         **{f'mt{i}': (tot, ) for i, (tot, _) in enumerate(MARKETABLE_TOTAL)},
         **{f'mn{i}': (nc, ) for i, (_, nc) in enumerate(MARKETABLE_TOTAL)},
-        'debt_total': DEBT_CURRENT_TOTAL, 'ltd': LTD_CURRENT,
+        'debt_total': DEBT_CURRENT_TOTAL, 'fll': FIN_LEASE_LIABILITY,
+        'fllc': FIN_LEASE_PARTS[0], 'flln': FIN_LEASE_PARTS[1], 'ltd': LTD_CURRENT,
         'stb': SHORT_BORROWINGS, 'gw': GOODWILL, 'intang': INTANGIBLES}.items()}
     flows = {'dep': annual_flows(payload, DEPRECIATION, **kw),
-             'amort': annual_flows(payload, AMORTIZATION, **kw)}
+             'amort': annual_flows(payload, AMORTIZATION, **kw),
+             'finrou': annual_flows(payload, FIN_LEASE_ROU_ADDITIONS, **kw)}
     rows = []
     for end in fiscal_ends:
         row = {'Fiscal year end': end, 'tags': {}, 'flags': []}
@@ -81,6 +86,12 @@ def build_capital_history(payload, fiscal_ends, *, vintage='latest', as_of=None,
         row['Depreciation'] = val(flows, 'dep', 'Depreciation')
         row['Amortization'] = val(flows, 'amort', 'Amortization')
         row['Net PP&E'] = ppe
+        row['Finance-lease ROU additions'] = val(flows, 'finrou', 'Finance-lease ROU additions')
+        fll = val(pts, 'fll', 'Finance lease liabilities')
+        if fll is None:
+            c_, n_ = val(pts, 'fllc', 'Finance lease (current)'), val(pts, 'flln', 'Finance lease (noncurrent)')
+            fll = (c_ or 0.0) + (n_ or 0.0) if (c_ is not None or n_ is not None) else None
+        row['Finance lease liabilities'] = fll
         if ppe is None:
             row['flags'].append('MISSING: Net PP&E')
 

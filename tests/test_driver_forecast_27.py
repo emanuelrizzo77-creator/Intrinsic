@@ -122,6 +122,18 @@ class DriverModel27(unittest.TestCase):
         cons_cap = self.run_model(h, scenario='conservative', rd_life=5)['valuation']['intrinsic_price']
         self.assertGreater(cons_cap, cons_plain)   # no double-counting of growth investment
 
+    def test_ppe_leakage_raises_capex_and_keeps_rollforward(self):
+        h = history()
+        for r in h[1:]:
+            r['CapEx'] += 0.05 * r['Net PP&E'] / 1.10   # 5% of prior PP&E leaves without depreciation
+        out = self.run_model(h)
+        leak = out['assumptions']['drivers']['ppe_leakage']['value']
+        self.assertAlmostEqual(leak, 0.05, places=3)
+        base = self.run_model(h, overrides={'ppe_leakage': 0.0})
+        self.assertLess(out['valuation']['intrinsic_price'], base['valuation']['intrinsic_price'])
+        r1 = out['projection']['rows'][0]
+        self.assertAlmostEqual(r1['ppe_leakage'], leak * out['assumptions']['drivers']['net_ppe0']['value'], places=6)
+
     def test_wacc_must_exceed_growth(self):
         with self.assertRaises(ValueError):
             self.run_model(wacc=0.03, terminal_growth=0.03)
