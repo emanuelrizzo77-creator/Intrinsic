@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from html import escape
 
 import pandas as pd
@@ -31,9 +32,10 @@ SOURCE_TAG_KIND = {'data': 'market', 'calibrated': 'model', 'assumption': 'warn'
 COLORS = {**SCENARIO_COLORS, 'market': T['market']}
 
 
-def _chart(fig, title=None, caption=None):
-    """Render a figure inside a bordered card."""
-    with st.container(border=True):
+def _chart(fig, title=None, caption=None, key=None):
+    """Render a figure inside a bordered glass card (key → stable CSS class st-key-ixcard-*)."""
+    slug = key or re.sub(r'[^a-z0-9]+', '-', (title or 'chart').lower()).strip('-')
+    with st.container(border=True, key=f'ixcard-{slug}'):
         if title:
             ui.md(f'<div class="ix-card-title">{escape(title)}</div>')
         if caption:
@@ -215,7 +217,7 @@ def _overview(results, scen, wacc, market_price, market_shares, data, g=None, ct
     cls = 'pos' if upside >= 0 else 'neg'
     prices = {s: _price(results[s]) for s in SCENARIOS}
     manual_price = ctx.get('price_mode') == 'manual'
-    mkt_tag = ui.tag('Market · your input', 'user') if manual_price else ui.tag('Market data', 'market')
+    mkt_tag = ui.tag('Market · your input', 'user') if manual_price else ui.tag('Live market data', 'market live')
 
     ui.md(f"""
     <div class="ix-hero">
@@ -549,7 +551,7 @@ def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
                       hovermode='closest')
     fig.update_xaxes(side='top', showgrid=False)
     fig.update_yaxes(autorange='reversed', showgrid=False)
-    _chart(fig)
+    _chart(fig, key='sensitivity')
     st.caption(f'Colour midpoint = market price (${market_price:,.2f}): green cells are above the market, red below. '
                'Outlined cell = current inputs. N/A = WACC not above growth, or no positive terminal profit.')
     export = pd.DataFrame(matrix, index=[f'{w * 100:.2f}%' for w in waccs], columns=[f'{x * 100:.2f}%' for x in growths])

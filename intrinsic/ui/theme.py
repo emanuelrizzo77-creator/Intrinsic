@@ -295,6 +295,182 @@ table.ix-table {{ width:100%; border-collapse: collapse; font-size: .8rem; }}
 @media (prefers-reduced-motion: reduce) {{ .intrinsic-help .intrinsic-tip {{ transition: none; }} }}
 </style>"""
 
+# ---------------------------------------------------------------- spatial layer
+# Concept: the valuation floats in a dim room. Glass panels sit on three depth planes
+# (hero = closest, metrics/charts = middle, notes/tables = back), lit by a slow ambient light
+# behind them and standing on a faint perspective floor. Motion is "restrained-precise":
+# one ease-out curve, transform/opacity only, stagger follows reading order, and everything
+# collapses to the final static state under prefers-reduced-motion.
+SPATIAL_CSS = """<style>
+:root {
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --dur-micro: 180ms; --dur-ui: 320ms; --dur-in: 700ms; --stagger: 70ms;
+  --glass-1: rgba(17,23,31,.50); --glass-2: rgba(19,26,35,.56); --glass-3: rgba(22,30,42,.60);
+  --rim: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.035) 38%, rgba(92,207,191,.10));
+  --rim-hi: linear-gradient(160deg, rgba(255,255,255,.22), rgba(255,255,255,.05) 35%, rgba(92,207,191,.28));
+  --lift-1: 0 1px 0 rgba(255,255,255,.04) inset, 0 10px 24px -14px rgba(0,0,0,.7);
+  --lift-2: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px -18px rgba(0,0,0,.8);
+  --lift-3: 0 1px 0 rgba(255,255,255,.07) inset, 0 34px 70px -28px rgba(0,0,0,.9), 0 0 0 1px rgba(92,207,191,.04);
+}
+
+/* ---- environment: ambient light + perspective floor (fixed, behind everything, no pointer events) */
+[data-testid="stApp"] { background: radial-gradient(120% 90% at 50% -10%, #111823 0%, #0B0E13 55%, #080A0E 100%); }
+[data-testid="stApp"]::before {
+  content:""; position: fixed; inset: -25%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(38% 32% at 70% 18%, rgba(92,207,191,.17), transparent 70%),
+    radial-gradient(30% 28% at 22% 70%, rgba(142,156,245,.12), transparent 70%),
+    radial-gradient(26% 22% at 88% 82%, rgba(92,207,191,.09), transparent 70%);
+  animation: ix-ambient 48s ease-in-out infinite alternate;
+}
+[data-testid="stApp"]::after {
+  content:""; position: fixed; left: -30%; right: -30%; bottom: -8vh; height: 46vh; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(155,166,181,.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(155,166,181,.10) 1px, transparent 1px);
+  background-size: 64px 64px;
+  transform: perspective(520px) rotateX(64deg); transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 85%);
+          mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 85%);
+}
+[data-testid="stAppViewContainer"] { position: relative; z-index: 1; background: transparent; }
+[data-testid="stMain"], [data-testid="stHeader"] { background: transparent; }
+[data-testid="stHeader"] { backdrop-filter: blur(10px); background: rgba(11,14,19,.55); }
+@keyframes ix-ambient {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  50%  { transform: translate3d(-3%,2%,0) scale(1.04); }
+  100% { transform: translate3d(2%,-2%,0) scale(1.02); }
+}
+
+/* ---- sidebar: a frosted control panel at the edge of the room */
+[data-testid="stSidebar"] { background: rgba(12,16,22,.72) !important; backdrop-filter: blur(18px) saturate(140%);
+  border-right: 1px solid rgba(255,255,255,.06); }
+[data-testid="stSidebar"] [data-testid="stExpander"] details,
+[data-testid="stSidebar"] .ix-state {
+  background: linear-gradient(var(--glass-1), var(--glass-1)) padding-box, var(--rim) border-box;
+  border: 1px solid transparent; box-shadow: var(--lift-1); }
+
+/* ---- glass planes */
+.ix-hero, .ix-metrics, .ix-note, .ix-state-card, .ix-table-wrap, .ix-quality, .ix-beta, .ix-state,
+[class*="st-key-ixcard"] {
+  border: 1px solid transparent !important;
+  -webkit-backdrop-filter: blur(16px) saturate(135%); backdrop-filter: blur(16px) saturate(135%);
+}
+.ix-note, .ix-table-wrap, .ix-quality, .ix-state, .ix-beta, .ix-state-card {
+  background: linear-gradient(var(--glass-1), var(--glass-1)) padding-box, var(--rim) border-box;
+  box-shadow: var(--lift-1); }
+.ix-metrics, [class*="st-key-ixcard"] {
+  background: linear-gradient(var(--glass-2), var(--glass-2)) padding-box, var(--rim) border-box;
+  box-shadow: var(--lift-2); border-radius: 12px !important; }
+.ix-hero {
+  position: relative; overflow: hidden; border-radius: 14px;
+  background: linear-gradient(var(--glass-3), var(--glass-3)) padding-box, var(--rim-hi) border-box;
+  box-shadow: var(--lift-3); }
+.ix-note, .ix-table-wrap, .ix-quality, .ix-state-card, .ix-beta { border-radius: 12px; }
+/* coloured edge markers survive the rim-light border */
+.ix-state-card, .ix-beta { box-shadow: var(--lift-1), inset 2px 0 0 var(--ix-warn); }
+.ix-state-card.info { box-shadow: var(--lift-1), inset 2px 0 0 var(--ix-model); }
+.ix-state-card.block { box-shadow: var(--lift-1), inset 2px 0 0 var(--ix-neg); }
+.ix-hero-cell, .ix-metric, .ix-range { border-color: rgba(255,255,255,.06) !important; }
+.ix-table tbody tr { background: transparent; }
+.ix-table thead th { background: rgba(24,32,43,.92); }
+.ix-table td:first-child, .ix-table th:first-child { background: rgba(18,24,33,.96); }
+.ix-table th.a, .ix-table td.a { background: rgba(8,10,14,.45); }
+.ix-table tbody tr:hover td { background-color: rgba(255,255,255,.025); }
+
+/* hero light: a soft key light in the corner + a specular sweep each time a new value is rendered */
+.ix-hero::before { content:""; position:absolute; inset:-40% -10% auto auto; width: 60%; height: 120%;
+  background: radial-gradient(closest-side, rgba(92,207,191,.16), transparent); pointer-events:none; }
+.ix-hero::after { content:""; position:absolute; top:0; bottom:0; left:-40%; width: 35%; pointer-events:none;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.06), transparent);
+  transform: translateX(0) skewX(-12deg); opacity: 0;
+  animation: ix-sheen 1.4s var(--ease-out) .35s 1 both; }
+@keyframes ix-sheen { 0% { transform: translateX(0) skewX(-12deg); opacity: 0; }
+  15% { opacity: 1; } 100% { transform: translateX(420%) skewX(-12deg); opacity: 0; } }
+.ix-hero > * { position: relative; z-index: 1; }
+.ix-big.model { text-shadow: 0 0 28px rgba(92,207,191,.28); }
+
+/* ---- motion: entrances follow reading order (hero → metrics → context) */
+@keyframes ix-rise { from { opacity: 0; transform: translate3d(0,14px,0) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes ix-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ix-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ix-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes ix-drop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes ix-pulse { 0% { box-shadow: 0 0 0 0 rgba(231,235,240,.45); } 70%,100% { box-shadow: 0 0 0 6px rgba(231,235,240,0); } }
+
+.ix-head, .ix-strip { animation: ix-fade var(--dur-in) var(--ease-out) both; }
+.ix-strip > div { animation: ix-rise var(--dur-in) var(--ease-out) both; }
+.ix-strip > div:nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.ix-strip > div:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.ix-strip > div:nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.ix-strip > div:nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.ix-strip > div:nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+.ix-hero { animation: ix-rise var(--dur-in) var(--ease-out) both; }
+.ix-hero-cell { animation: ix-rise var(--dur-in) var(--ease-out) both; }
+.ix-hero-cell:nth-child(2) { animation-delay: calc(var(--stagger) * 1.5); }
+.ix-hero-cell:nth-child(3) { animation-delay: calc(var(--stagger) * 3); }
+.ix-range-band { transform-origin: left center; animation: ix-grow-x 900ms var(--ease-out) 250ms both; }
+.ix-range-axis { transform-origin: left center; animation: ix-grow-x 900ms var(--ease-out) 150ms both; }
+.ix-range-pt { animation: ix-drop var(--dur-in) var(--ease-out) both; }
+.ix-range-pt:nth-of-type(3) { animation-delay: 420ms; } .ix-range-pt:nth-of-type(4) { animation-delay: 500ms; }
+.ix-range-pt:nth-of-type(5) { animation-delay: 580ms; }
+.ix-range-mkt { transform-origin: top; animation: ix-grow-y 600ms var(--ease-out) 700ms both; }
+.ix-metrics { animation: ix-rise var(--dur-in) var(--ease-out) 120ms both; }
+.ix-metric { animation: ix-rise var(--dur-in) var(--ease-out) both; }
+.ix-metric:nth-child(1) { animation-delay: 180ms; } .ix-metric:nth-child(2) { animation-delay: 250ms; }
+.ix-metric:nth-child(3) { animation-delay: 320ms; } .ix-metric:nth-child(4) { animation-delay: 390ms; }
+.ix-metric:nth-child(5) { animation-delay: 460ms; } .ix-metric:nth-child(6) { animation-delay: 530ms; }
+.ix-note, .ix-state-card, .ix-quality, .ix-table-wrap, .ix-status-grid, .ix-beta, .ix-empty,
+[class*="st-key-ixcard"] { animation: ix-rise var(--dur-in) var(--ease-out) 200ms both; }
+.ix-h, .intrinsic-glossary { animation: ix-fade var(--dur-in) var(--ease-out) both; }
+.ix-table tbody tr { animation: ix-fade 500ms var(--ease-out) both; }
+.ix-table tbody tr:nth-child(2) { animation-delay: 40ms; } .ix-table tbody tr:nth-child(3) { animation-delay: 80ms; }
+.ix-table tbody tr:nth-child(4) { animation-delay: 120ms; } .ix-table tbody tr:nth-child(5) { animation-delay: 160ms; }
+.ix-table tbody tr:nth-child(6) { animation-delay: 200ms; } .ix-table tbody tr:nth-child(7) { animation-delay: 240ms; }
+.ix-table tbody tr:nth-child(n+8) { animation-delay: 280ms; }
+
+/* live-data indicator: only on automatically retrieved market data */
+.ix-tag.live::before { animation: ix-pulse 2.4s ease-out infinite; }
+
+/* ---- depth on interaction: planes come forward when you point at them */
+@media (hover: hover) and (pointer: fine) {
+  .ix-note, .ix-metrics, .ix-state-card, [class*="st-key-ixcard"], .ix-table-wrap {
+    transition: transform var(--dur-ui) var(--ease-out), box-shadow var(--dur-ui) var(--ease-out); }
+  .ix-note:hover, .ix-state-card:hover, .ix-table-wrap:hover { transform: translate3d(0,-2px,0); box-shadow: var(--lift-2); }
+  .ix-metrics:hover, [class*="st-key-ixcard"]:hover { transform: translate3d(0,-2px,0); box-shadow: var(--lift-3); }
+  .ix-metric { transition: background-color var(--dur-micro) ease; }
+  .ix-metric:hover { background-color: rgba(255,255,255,.03); }
+  .ix-hero-cell { transition: background-color var(--dur-micro) ease; }
+  .ix-hero-cell:hover { background-color: rgba(255,255,255,.02); }
+}
+
+/* ---- section and scenario controls: the selected plane glows */
+[data-testid="stButtonGroup"] button { transition: background-color var(--dur-micro) ease, box-shadow var(--dur-ui) var(--ease-out),
+  color var(--dur-micro) ease; backdrop-filter: blur(10px); }
+[data-testid="stButtonGroup"] button[aria-checked="true"] {
+  box-shadow: 0 0 0 1px rgba(92,207,191,.45), 0 0 18px -4px rgba(92,207,191,.45); }
+
+/* ---- small screens: lighter glass, no floor */
+@media (max-width: 860px) {
+  [data-testid="stApp"]::after { display: none; }
+  .ix-hero, .ix-metrics, .ix-note, .ix-state-card, .ix-table-wrap, .ix-quality, .ix-beta, .ix-state,
+  [class*="st-key-ixcard"] { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+}
+
+/* ---- reduced motion: final state, no movement */
+@media (prefers-reduced-motion: reduce) {
+  [data-testid="stApp"]::before, .ix-hero::after, .ix-tag.live::before { animation: none !important; }
+  .ix-hero::after { display: none; }
+  .ix-head, .ix-strip, .ix-strip > div, .ix-hero, .ix-hero-cell, .ix-range-band, .ix-range-axis, .ix-range-pt,
+  .ix-range-mkt, .ix-metrics, .ix-metric, .ix-note, .ix-state-card, .ix-quality, .ix-table-wrap, .ix-status-grid,
+  .ix-beta, .ix-empty, .ix-h, .intrinsic-glossary, .ix-table tbody tr, [class*="st-key-ixcard"] {
+    animation: none !important; transition: none !important; }
+}
+</style>"""
+CSS = CSS.removesuffix('</style>') + SPATIAL_CSS.removeprefix('<style>')   # one <style> block
+# st.markdown ends an HTML block at the first blank line, which would print the rest as text.
+CSS = '\n'.join(line for line in CSS.splitlines() if line.strip())
+
 MARK_SVG = (f'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">'
             f'<path d="M3 13.5 L6.5 8.5 L9.5 10.5 L13 3" fill="none" stroke="{T["model"]}" stroke-width="1.6" '
             f'stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="3" r="1.6" fill="{T["model"]}"/>'
