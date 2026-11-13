@@ -1,7 +1,7 @@
 
 import unittest
 
-from wacc_calculator import (
+from intrinsic.wacc_calculator import (
     calculate_cost_of_equity,
     calculate_wacc
 )

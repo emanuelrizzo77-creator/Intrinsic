@@ -1,0 +1,506 @@
+# INTRINSIC — Streamlit dashboard (entry point).
+# Presentation and user inputs only; the valuation engine lives in intrinsic/forecast.py
+# and the discount-rate inputs in intrinsic/wacc_data.py / intrinsic/wacc_inputs.py.
+
+from html import escape as html_escape
+
+import os
+
+import streamlit as st
+
+# On Streamlit Community Cloud the SEC contact string comes from st.secrets.
+try:
+    if "INTRINSIC_SEC_USER_AGENT" in st.secrets and not os.environ.get("INTRINSIC_SEC_USER_AGENT"):
+        os.environ["INTRINSIC_SEC_USER_AGENT"] = st.secrets["INTRINSIC_SEC_USER_AGENT"]
+except Exception:   # no secrets file locally: the environment variable is used instead
+    pass
+
+from intrinsic.company_directory import fetch_sec_directory
+from intrinsic.dashboard_panel import render_model_27
+from intrinsic.inputs import DataUnavailable
+from intrinsic.industry_beta import bottom_up_beta, load_industry_betas
+from intrinsic.wacc_inputs import (risk_free_rate as _live_risk_free_rate, equity_risk_premium as equity_risk_premium_default,
+                              marginal_tax_rate, cost_of_debt as synthetic_cost_of_debt)
+from intrinsic.sector_routing import classify_sic
+from intrinsic.market_reference import obtener_referencia_mercado
+from intrinsic.wacc_calculator import calculate_wacc
+from intrinsic.wacc_data import obtener_datos_wacc
+from intrinsic.ui import components as ui
+from intrinsic.ui import theme as ui_theme
+
+MANUAL_WACC_DEFAULT = 0.09      # starting value for the manual override only
+TERMINAL_GROWTH = 0.025         # long-run nominal growth; editable in the sidebar
+
+# ==========================================
+# PAGE CONFIGURATION
+# ==========================================
+
+st.set_page_config(
+    page_title="Intrinsic | Equity Valuation",
+    page_icon=":material/query_stats:",
+    layout="wide",
+)
+@st.cache_data(ttl=3600, show_spinner=False)
+def cargar_datos_wacc(ticker):
+    return obtener_datos_wacc(ticker)
+@st.cache_data(ttl=3600, show_spinner=False)
+def cargar_tasa_libre_riesgo():
+    return _live_risk_free_rate()
+@st.cache_data(ttl=900, show_spinner=False)
+def cargar_referencia_mercado(ticker):
+    return obtener_referencia_mercado(ticker)
+
+# Design system (tokens, CSS, chart template) lives in intrinsic/ui/theme.py — presentation only.
+st.markdown(ui_theme.CSS, unsafe_allow_html=True)
+
+# ==========================================
+# HISTORICAL DATA
+# ==========================================
+
+
+# Initial Top 25 candidate universe.
+# Membership is a curated selection, not a live market-cap ranking.
+# Shown whenever the SEC company search (universal engine) is in use.
+BETA_NOTICE = """
+<div class="ix-beta">
+  <div class="ix-beta-head"><span class="ix-tag warn">Beta</span><b>Universal engine in development</b></div>
+  <p>You are searching the full SEC universe. Intrinsic's model is fully tested on the <b>25 largest US
+  companies</b>; extending it to every company that files with the SEC is still in progress. Some companies
+  will be refused, show incomplete data or need manual inputs while that work continues &mdash; thank you for
+  your patience. In a random test of 60 non-financial SEC companies, about 1 in 3 can be valued today; the rest
+  are refused with the reason shown (foreign filers, loss-making companies, missing data).</p>
+  <p class="ix-beta-note">Intrinsic is a portfolio project by a recent graduate, built to demonstrate financial
+  modelling and data engineering. It is not a professional investment tool, and nothing here is investment
+  advice.</p>
+</div>
+"""
+
+TOP_25 = {
+    "MSFT": "Microsoft Corporation",
+    "AAPL": "Apple Inc.",
+    "NVDA": "NVIDIA Corporation",
+    "GOOGL": "Alphabet Inc.",
+    "AMZN": "Amazon.com Inc.",
+    "META": "Meta Platforms Inc.",
+    "AVGO": "Broadcom Inc.",
+    "TSLA": "Tesla Inc.",
+    "BRK-B": "Berkshire Hathaway Inc.",
+    "WMT": "Walmart Inc.",
+    "LLY": "Eli Lilly and Company",
+    "JPM": "JPMorgan Chase & Co.",
+    "V": "Visa Inc.",
+    "MA": "Mastercard Incorporated",
+    "XOM": "Exxon Mobil Corporation",
+    "JNJ": "Johnson & Johnson",
+    "ORCL": "Oracle Corporation",
+    "COST": "Costco Wholesale Corporation",
+    "HD": "The Home Depot Inc.",
+    "PG": "The Procter & Gamble Company",
+    "ABBV": "AbbVie Inc.",
+    "BAC": "Bank of America Corporation",
+    "NFLX": "Netflix Inc.",
+    "KO": "The Coca-Cola Company",
+    "AMD": "Advanced Micro Devices Inc.",
+}
+ui.brand(st.sidebar)
+st.sidebar.subheader("Company")
+selection_mode = st.sidebar.radio(
+    "Company source",
+    ["Top 25 companies", "SEC company search"],
+    key="m22_source",
+    horizontal=True,
+    label_visibility="collapsed",
+)
+new_company = selection_mode == "SEC company search"
+selected_cik = None
+if not new_company:
+    ticker = st.sidebar.selectbox(
+        "Selected company",
+        list(TOP_25),
+        format_func=lambda symbol: f"{TOP_25[symbol]} ({symbol})",
+        key="selected_company_ticker",
+    )
+    company_name = TOP_25[ticker]
+else:
+    @st.cache_data(ttl=86400, show_spinner=False)
+    def _m22_directory():
+        return fetch_sec_directory()
+    try:
+        directory = _m22_directory()
+    except Exception as exc:
+        st.error(f"SEC directory unavailable: {exc}")
+        st.info("Configure INTRINSIC_SEC_USER_AGENT with a real contact email.")
+        st.stop()
+    options = {f"{name} ({symbol})": (symbol, name, cik) for symbol, name, cik in directory}
+    choice = st.sidebar.selectbox("Search name or ticker", list(options), index=None,
+                                  placeholder="Search Coca-Cola, KO, etc.", key="m22_search")
+    st.markdown(BETA_NOTICE, unsafe_allow_html=True)
+    if choice is None:
+        st.markdown('<div class="ix-empty">Search any company filed with the SEC in the sidebar to open its '
+                    'workspace. For the fully tested experience, switch back to <b>Top 25 companies</b>.</div>',
+                    unsafe_allow_html=True)
+        st.stop()
+    ticker, company_name, selected_cik = options[choice]
+    st.sidebar.caption(f"SEC CIK: {selected_cik:010d}")
+    st.sidebar.caption("Universal engine · beta")
+
+# Route by SEC industry BEFORE any market or WACC work: FCFF does not apply to
+# banks, insurers, REITs or holding companies, and failing later looks like a bug.
+@st.cache_data(ttl=86400, show_spinner=False)
+def cargar_clasificacion(ticker, cik=None):
+    from intrinsic.inputs import lookup_cik
+    from intrinsic.sec_data import submissions_cached
+    if cik is None:
+        try:
+            cik, _ = lookup_cik(ticker)
+        except LookupError:
+            return None
+    profile = submissions_cached(int(cik))
+    decision = classify_sic(profile.get("sic"))
+    return {"model": decision.model, "category": decision.category, "reason": decision.reason,
+            "sic": profile.get("sic"), "sic_description": profile.get("sicDescription")}
+
+try:
+    _route = cargar_clasificacion(ticker, selected_cik)
+except Exception:
+    _route = None          # classification unavailable: let the model's own checks decide
+# Do not silently value Alphabet using Microsoft assumptions.
+_valued = not _route or _route["model"] == "fcff"
+st.markdown(
+    f"""<div class="ix-head"><div>
+      <div class="ix-eyebrow"><span>Equity valuation</span><span>·</span><b>{"DCF · FCFF, 10-year" if _valued else "Not valued"}</b>
+        <span>·</span><span>Research tool, not investment advice</span></div>
+      <div class="ix-name"><h1>{html_escape(company_name)}</h1><span class="ix-ticker">{html_escape(ticker)}</span></div>
+    </div><div>{ui.tag("Universal engine · beta", "warn") if new_company else ui.tag("Top 25 · fully tested", "plain")}</div>
+    </div>""", unsafe_allow_html=True,
+)
+# Filled by the dashboard once SEC and market data are loaded (company metadata strip).
+header_strip = st.container()
+
+if _route and _route["model"] != "fcff":
+    _why = {
+        "bank_equity": "Banks earn money on their balance sheet: debt is raw material, not financing, so "
+                       "free cash flow to the firm and WACC are not meaningful. They need an equity-based "
+                       "model (dividend or excess-return) with regulatory capital.",
+        "insurance_equity": "Insurers invest premiums before paying claims; cash flow depends on reserves and "
+                            "regulatory capital, which an FCFF model does not capture.",
+        "reit_affo": "REITs are valued on funds from operations (FFO/AFFO) or net asset value.",
+        "holding_sotp": "Holding and investment companies are valued as the sum of their parts.",
+    }.get(_route["model"], _route["reason"])
+    ui.state_card(
+        "Outside the scope of this model",
+        f'''<div class="ix-verdict"><strong>{html_escape(_route["category"])}</strong> ·
+        SEC SIC {html_escape(str(_route["sic"]))} ({html_escape(str(_route["sic_description"] or ""))})</div>
+        {html_escape(_why)}<br><br>Intrinsic values non-financial operating companies with a free-cash-flow-to-the-firm
+        model. Rather than force a number that would look precise but be wrong, this company is not valued.
+        A sector-specific engine for financial companies is on the roadmap.''',
+        "info",
+    )
+    st.stop()
+
+# Model 27 is the single forecasting engine; it loads and audits its own SEC inputs.
+
+st.sidebar.subheader("Assumptions")
+assumption_status = st.sidebar.container()   # filled below with the active mode of each input group
+wacc_box = st.sidebar.expander("Discount rate (WACC)", expanded=False)
+
+
+# ==========================================
+# DYNAMIC WACC SETTINGS
+# ==========================================
+
+wacc_mode = wacc_box.radio(
+    "WACC Calculation Mode",
+    ["Automatic Calculation", "Manual Override"],
+    key=f"wacc_mode_{ticker}",
+)
+
+if new_company:
+    wacc_box.caption(
+        "Automatic WACC uses company-specific market and financial data. "
+        "Review source dates and assumptions before relying on the result."
+    )
+
+if wacc_mode == "Automatic Calculation":
+
+    
+    # ==========================================
+    # AUTOMATIC MARKET DATA
+    # ==========================================
+
+    try:
+        with st.spinner("Loading market and SEC data..."):
+            datos_wacc = cargar_datos_wacc(ticker)
+
+    except DataUnavailable as error:
+        ui.state_card("Not enough SEC data to value this company",
+                      f'{html_escape(str(error))}<br><br>Rather than fill gaps with guesses, Intrinsic '
+                      'does not produce a value. Try another company, or one of the Top 25.')
+        st.stop()
+    except Exception as error:
+        st.error(
+            f"Unable to load automatic WACC data: {error}"
+        )
+        st.info(
+            "Check the data sources or switch to "
+            "Manual Override."
+        )
+        st.stop()
+
+    wacc_box.caption(f"Market data {str(datos_wacc['market_date'])[:10]} · SEC debt balance {datos_wacc['debt_date']}")
+
+    # ==========================================
+    # EDITABLE FINANCIAL ASSUMPTIONS
+    # ==========================================
+
+    _rf_default, _rf_source = cargar_tasa_libre_riesgo()
+    risk_free_rate = wacc_box.number_input(
+        "Risk-free rate (%)",
+        min_value=0.0,
+        max_value=20.0,
+        value=round(_rf_default * 100, 2),
+        step=0.05,
+        key="wacc_risk_free",
+        help=_rf_source,
+    ) / 100
+
+    _bu = datos_wacc.get("beta_bottom_up") or {}
+    _blume = datos_wacc.get("beta_adjusted")
+    _REGRESSION = "Stock regression (Blume-adjusted)"
+    _industries = [name for name in load_industry_betas() if not name.startswith("Total Market (")]
+    _auto = _bu.get("industry")
+    _choices = _industries + ([_REGRESSION] if _blume is not None else [])
+    _regression_text = (f"Yahoo regression beta {datos_wacc['beta']:.2f}, Blume-adjusted {_blume:.2f}"
+                        if _blume is not None else "Yahoo Finance has no regression beta for this stock")
+    beta_basis = wacc_box.selectbox(
+        "Beta basis (industry)",
+        _choices,
+        index=_choices.index(_auto) if _auto in _choices else len(_choices) - 1,
+        key=f"wacc_beta_industry_{ticker}",
+        help=(f"Matched automatically from SEC SIC {_bu['sic']} ({_bu['match']} match). " if _auto else
+              f"No industry match ({_bu.get('reason', 'no SIC')}). ")
+             + "Change it when the company's main risk sits in another business (one SIC code "
+               "cannot describe a multi-segment company).",
+    )
+    if beta_basis != _REGRESSION:
+        _bu = bottom_up_beta(_bu.get("sic"), market_equity=datos_wacc["market_equity"],
+                             total_debt=datos_wacc["total_debt"],
+                             industry=None if beta_basis == _auto else beta_basis)
+    if beta_basis != _REGRESSION and _bu.get("beta") is not None:
+        _beta_default = _bu["beta"]
+        _beta_help = (
+            f"Industry (bottom-up) beta: {_bu['industry']} unlevered beta {_bu['unlevered_beta']:.2f} "
+            f"(cash-corrected, {_bu['n_firms']} US firms; Damodaran, Jan 2026), relevered with this company's "
+            f"debt / market equity of {_bu['de_ratio']:.0%} at a {_bu['tax']:.0%} marginal tax rate. "
+            f"For comparison: {_regression_text}. "
+            "Industry averages are far less noisy than one stock's regression. Type another value to override."
+        )
+    else:
+        _beta_default = _blume
+        _beta_help = (f"Yahoo regression beta {datos_wacc['beta']:.2f} with the Blume adjustment "
+                      "(0.67 × raw + 0.33). Single-stock betas are noisy. Type another value to override.")
+    beta = wacc_box.number_input(
+        "Beta (levered)",
+        min_value=0.0,
+        max_value=5.0,
+        value=float(_beta_default),
+        step=0.05,
+        key=f"wacc_beta_{ticker}_{beta_basis}",
+        help=_beta_help,
+    )
+    if beta_basis != _REGRESSION and _bu.get("beta") is not None:
+        _warn = []
+        if _bu["match"] == "broad":
+            _warn.append("broad SIC match, check the industry")
+        if _bu.get("small_industry"):
+            _warn.append(f"only {_bu['n_firms']} firms in industry")
+        wacc_box.caption("Beta source: industry · " + " · ".join([_bu["industry"]] + _warn))
+    else:
+        wacc_box.caption("Beta source: stock regression (Blume)")
+
+    _erp_default, _erp_source = equity_risk_premium_default()
+    equity_risk_premium = wacc_box.number_input(
+        "Equity risk premium (%)",
+        min_value=0.0,
+        max_value=20.0,
+        value=round(_erp_default * 100, 2),
+        step=0.05,
+        key="wacc_erp",
+        help=_erp_source + ". The premium investors demand over Treasuries for the US market as a whole.",
+    ) / 100
+
+    
+    historical_kd = datos_wacc.get("historical_kd")
+    _cov = datos_wacc.get("interest_coverage")
+    _kd, kd_source = synthetic_cost_of_debt(
+        risk_free_rate, _cov["coverage"] if _cov else None,
+        f", FY ending {_cov['fiscal_end']}" if _cov else "")
+    if _kd is None:
+        _kd = risk_free_rate + 0.0111
+        kd_source = ("Assumption: risk-free + 1.11% (BBB default spread, Damodaran Jan 2026) because SEC "
+                     "filings do not tag interest expense for this company. Edit if you know its rating.")
+    if historical_kd is not None:
+        kd_source += (f". For comparison, historical interest / average debt was "
+                      f"{historical_kd['cost_of_debt']:.2%} (FY {historical_kd['fiscal_end']}), which reflects "
+                      "older coupons rather than today's borrowing cost.")
+
+    cost_of_debt = wacc_box.number_input(
+        "Pre-tax cost of debt (%)",
+        value=round(_kd * 100, 2),
+        min_value=0.0,
+        max_value=30.0,
+        step=0.05,
+        key=f"wacc_cost_debt_{ticker}_{round(risk_free_rate, 4)}",
+        help=kd_source,
+    ) / 100
+    wacc_box.caption("Cost of debt: " + ("synthetic rating from interest coverage" if _cov else
+                                         "assumed BBB spread · interest coverage unavailable"))
+
+    _tax_default, _tax_source = marginal_tax_rate()
+    tax_rate = wacc_box.number_input(
+        "Marginal tax rate (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=round(_tax_default * 100, 2),
+        step=0.5,
+        key=f"wacc_tax_rate_{ticker}",
+        help=_tax_source + ". Used for the debt tax shield; matches the long-run tax rate in the forecast.",
+    ) / 100
+
+    # ==========================================
+    # AUTOMATIC CAPITAL STRUCTURE
+    # ==========================================
+
+    market_equity = datos_wacc["market_equity"]
+    total_debt = datos_wacc["total_debt"]
+
+
+    # ==========================================
+    # WACC CALCULATION
+    # ==========================================
+
+    wacc_result = calculate_wacc(
+        risk_free_rate=risk_free_rate,
+        beta=beta,
+        equity_risk_premium=equity_risk_premium,
+        cost_of_debt=cost_of_debt,
+        tax_rate=tax_rate,
+        market_equity=market_equity,
+        total_debt=total_debt
+    )
+
+    wacc = wacc_result["wacc"]
+
+    wacc_box.markdown(
+        '<div class="ix-state">' + ui.kv_rows(
+            [("Market capitalization", f"${market_equity / 1e9:,.1f} B"),
+             ("Total debt", f"${total_debt / 1e9:,.1f} B"),
+             ("Cost of equity", f"{(risk_free_rate + beta * equity_risk_premium) * 100:.2f}%")],
+            total=("WACC", f"{wacc * 100:.2f}%")) + '</div>',
+        unsafe_allow_html=True,
+    )
+
+    wacc_box.caption(
+        "Every input shows its source under the ? icon and stays editable. "
+        "Defaults: live 10-year Treasury, Damodaran implied ERP and industry beta, "
+        "synthetic-rating cost of debt, 25% marginal tax."
+    )
+
+else:
+    wacc = wacc_box.number_input(
+        "Manual WACC (%)",
+        min_value=1.0,
+        max_value=30.0,
+        value=MANUAL_WACC_DEFAULT * 100,
+        step=0.25,
+        key=f"manual_wacc_{ticker}"
+    ) / 100
+
+# ==========================================
+# MARKET REFERENCE — AUTOMATIC OR MANUAL
+# ==========================================
+mkt_box = st.sidebar.expander("Market price & shares", expanded=False)
+reference_mode = mkt_box.radio(
+    "Market Data Mode",
+    ["Automatic", "Manual Override"],
+    key="market_reference_mode",
+    horizontal=True,
+)
+
+try:
+    with st.spinner("Loading market reference..."):
+        market_reference = cargar_referencia_mercado(ticker)
+except Exception as error:
+    market_reference = None
+    mkt_box.warning(f"Market reference unavailable: {error}")
+
+if reference_mode == "Automatic":
+    if market_reference is None:
+        st.error("Market data unavailable. Retry or use manual inputs after restoring the data source.")
+        st.stop()
+    market_price = market_reference["market_price"]
+    shares_outstanding = market_reference["shares_outstanding"]
+    mkt_box.markdown(
+        '<div class="ix-state">' + ui.kv_rows(
+            [("Market price", f"${market_price:,.2f}"),
+             ("Shares outstanding", f"{shares_outstanding / 1e9:,.3f} B")]) + '</div>',
+        unsafe_allow_html=True,
+    )
+    mkt_box.caption(f"Yahoo Finance · retrieved {str(market_reference['retrieved_at'])[:16].replace('T', ' ')} UTC")
+else:
+    market_price = mkt_box.number_input(
+        "Market Price (USD)", min_value=0.01,
+        value=float(market_reference["market_price"]) if market_reference else 100.0,
+        step=1.0, key=f"manual_market_price_{ticker}",
+    )
+    shares_outstanding = mkt_box.number_input(
+        "Shares Outstanding (shares)", min_value=1,
+        value=int(market_reference["shares_outstanding"]) if market_reference else 1_000_000_000,
+        step=1_000_000, key=f"manual_shares_outstanding_{ticker}",
+    )
+    mkt_box.caption("Manual values are illustrative until verified.")
+    if new_company and market_reference is None:
+        mkt_box.warning("Fallback share count from SEC common stock is not necessarily diluted; market price default $100 is a placeholder. Enter verified figures.")
+
+terminal_growth = wacc_box.number_input(
+    "Terminal growth (%)",
+    min_value=0.0,
+    max_value=10.0,
+    value=TERMINAL_GROWTH * 100,
+    step=0.25,
+    key=f"terminal_growth_{ticker}"
+) / 100
+
+# ==========================================
+# CALCULATIONS
+# ==========================================
+
+if wacc <= terminal_growth:
+    st.error(
+        "WACC must be greater than Terminal Growth."
+    )
+    st.stop()
+
+# ==========================================
+# INTRINSIC 27 WORKSPACE (single model)
+# ==========================================
+_wacc_manual = wacc_mode != "Automatic Calculation"
+_price_manual = reference_mode != "Automatic"
+_g_changed = abs(terminal_growth - TERMINAL_GROWTH) > 1e-12
+assumption_status.markdown(
+    '<div class="ix-state">' + ui.kv_rows([
+        ("Discount rate", f'{ui.tag("Manual", "user") if _wacc_manual else ui.tag("Auto", "model")}&nbsp; {wacc * 100:.2f}%'),
+        ("Market price", f'{ui.tag("Manual", "user") if _price_manual else ui.tag("Auto", "model")}&nbsp; ${market_price:,.2f}'),
+        ("Terminal growth", f'{ui.tag("Edited", "user") if _g_changed else ui.tag("Default", "model")}&nbsp; {terminal_growth * 100:.2f}%'),
+    ]) + '</div>', unsafe_allow_html=True)
+
+render_model_27(ticker, wacc, terminal_growth, market_price, shares_outstanding, context={
+    "slot": header_strip,
+    "price_mode": "manual" if _price_manual else "auto",
+    "price_source": ("Manual input" if _price_manual else
+                     f"Yahoo Finance · {str(market_reference['retrieved_at'])[:16].replace('T', ' ')} UTC"),
+    "wacc_mode": "manual" if _wacc_manual else "auto",
+    "g_changed": _g_changed,
+    "sic": (_route or {}).get("sic"),
+    "industry": (_route or {}).get("sic_description"),
+})

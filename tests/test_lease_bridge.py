@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import patch
 
-from valuation_bridge import (
+from intrinsic.market_reference import (
     calcular_deuda_neta_con_leases,
     extraer_finance_leases_sec,
     obtener_puente_financiero,
@@ -85,8 +85,8 @@ class TestLeaseBridge(unittest.TestCase):
 
         self.assertEqual(resultado, 30_045_000_000)
 
-    @patch("valuation_bridge.obtener_balance_sec")
-    @patch("valuation_bridge.descargar_datos")
+    @patch("intrinsic.market_reference.obtener_balance_sec")
+    @patch("intrinsic.market_reference.descargar_datos")
     def test_bridge_with_leases(
         self, mock_descargar, mock_balance
     ):
@@ -108,8 +108,8 @@ class TestLeaseBridge(unittest.TestCase):
             "AVAILABLE",
         )
 
-    @patch("valuation_bridge.obtener_balance_sec")
-    @patch("valuation_bridge.descargar_datos")
+    @patch("intrinsic.market_reference.obtener_balance_sec")
+    @patch("intrinsic.market_reference.descargar_datos")
     def test_bridge_without_leases(
         self, mock_descargar, mock_balance
     ):
