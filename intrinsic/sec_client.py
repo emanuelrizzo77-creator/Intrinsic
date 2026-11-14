@@ -4,15 +4,20 @@ Backward compatible: descargar_datos() still defaults to Microsoft.
 """
 from datetime import date
 from functools import lru_cache
+import os
 import re
 import requests
 
 DEFAULT_TICKER = "MSFT"
 BASE_URL = "https://data.sec.gov"
-HEADERS = {
-    "User-Agent": "Intrinsic Research your@email.com",
-    "Accept-Encoding": "gzip, deflate",
-}
+
+
+def _headers():
+    """SEC requires an identifying contact; it comes from INTRINSIC_SEC_USER_AGENT, never from the code."""
+    agent = os.environ.get("INTRINSIC_SEC_USER_AGENT", "")
+    if "@" not in agent:
+        raise ValueError('Set INTRINSIC_SEC_USER_AGENT="Intrinsic your@email.com" before querying SEC EDGAR.')
+    return {"User-Agent": agent, "Accept-Encoding": "gzip, deflate"}
 
 METRICAS = {
     "Revenue": [
@@ -30,7 +35,7 @@ METRICAS = {
 
 
 def _get_json(url):
-    response = requests.get(url, headers=HEADERS, timeout=30)
+    response = requests.get(url, headers=_headers(), timeout=30)
     response.raise_for_status()
     return response.json()
 
