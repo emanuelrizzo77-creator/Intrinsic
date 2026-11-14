@@ -247,12 +247,16 @@ table.ix-table {{ width:100%; border-collapse: collapse; font-size: .8rem; }}
   letter-spacing: 0; text-transform: none; }}
 .intrinsic-help:hover .intrinsic-tip, .intrinsic-help:focus-visible .intrinsic-tip {{ opacity:1; visibility:visible;
   transform: translate(-50%,0); }}
-.ix-metric:first-child .intrinsic-tip, .ix-hero-cell:first-child .intrinsic-tip {{ left:0; transform: translate(0,3px); }}
-.ix-metric:first-child .intrinsic-help:hover .intrinsic-tip, .ix-hero-cell:first-child .intrinsic-help:hover .intrinsic-tip {{
+/* Items at the edges of a row open their tooltip inward instead of centred, so it never runs off the page
+   (the first glossary chip, e.g. "WACC", sits against the left edge). */
+:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):first-child .intrinsic-tip {{ left:0; transform: translate(0,3px); }}
+:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):first-child .intrinsic-help:is(:hover, :focus-visible) .intrinsic-tip {{
   transform: translate(0,0); }}
-.ix-metric:last-child .intrinsic-tip, .ix-hero-cell:last-child .intrinsic-tip {{ left:auto; right:0; transform: translate(0,3px); }}
-.ix-metric:last-child .intrinsic-help:hover .intrinsic-tip, .ix-hero-cell:last-child .intrinsic-help:hover .intrinsic-tip {{
+:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):last-child .intrinsic-tip {{ left:auto; right:0; transform: translate(0,3px); }}
+:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):last-child .intrinsic-help:is(:hover, :focus-visible) .intrinsic-tip {{
   transform: translate(0,0); }}
+/* a chip alone in its row is both first and last: keep it opening to the right */
+.intrinsic-glossary-item:only-child .intrinsic-tip {{ left:0; right:auto; }}
 /* The block that holds an open tooltip comes to the front. Without this the tooltip stays inside its block's
    layer (entrance animations and glass panels create one) and the selected section/scenario button, which
    carries its own z-index, is drawn on top of it. */
