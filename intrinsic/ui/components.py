@@ -6,6 +6,7 @@ from html import escape
 
 import streamlit as st
 
+from intrinsic.ui.i18n import scenario, t
 from intrinsic.ui.theme import MARK_SVG, SCENARIO_COLORS
 
 
@@ -38,10 +39,20 @@ def md(html):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def brand(container):
+def brand(container, animate=False):
+    a = ' animate' if animate else ''
     container.markdown(
-        f'<div class="ix-brand"><div class="ix-mark">{MARK_SVG}</div><div><b>INTRINSIC</b>'
-        '<span>Equity valuation workspace</span></div></div>', unsafe_allow_html=True)
+        f'<div class="ix-brand"><div class="ix-mark{a}">{MARK_SVG}</div><div><b class="{a.strip()}">INTRINSIC</b>'
+        f'<span class="{a.strip()}">{escape(t("Equity valuation workspace"))}</span></div></div>',
+        unsafe_allow_html=True)
+
+
+def intro():
+    """Opening curtain (theme.INTRO_CSS styles it). Rendered once per browser session by app.py."""
+    md('<div class="ix-intro" aria-hidden="true"><div class="ix-intro-inner">'
+       '<div class="ix-intro-mark">I</div><div class="ix-intro-rule"></div>'
+       f'<div class="ix-intro-word">INTRINSIC</div><div class="ix-intro-tag">{escape(t("Equity valuation"))}</div>'
+       '</div></div>')
 
 
 def heading(title, sub=None):
@@ -93,14 +104,14 @@ def range_bar(prices, market_price, scen):
                          f'<i>{usd(p, 0)}</i></div>')
     mp = pos(market_price)
     parts.append(f'<div class="ix-range-mkt{" flip" if mp > 78 else ""}" style="left:{mp:.2f}%">'
-                 f'<i>MKT {usd(market_price)}</i></div></div>')
-    parts.append(f'<div class="ix-range-ends"><span>{usd(lo_d, 0)}</span><span>USD per share</span>'
+                 f'<i>{t("MKT")} {usd(market_price)}</i></div></div>')
+    parts.append(f'<div class="ix-range-ends"><span>{usd(lo_d, 0)}</span><span>{t("USD per share")}</span>'
                  f'<span>{usd(hi_d, 0)}</span></div>')
-    legend = ''.join(f'<span><i style="background:{SCENARIO_COLORS[s]}"></i>{s.capitalize()}'
-                     f'{" (selected)" if s == scen else ""}</span>' for s in ('conservative', 'base', 'optimistic')
+    legend = ''.join(f'<span><i style="background:{SCENARIO_COLORS[s]}"></i>{scenario(s)}'
+                     f'{" " + t("(selected)") if s == scen else ""}</span>' for s in ('conservative', 'base', 'optimistic')
                      if is_num(prices.get(s)))
-    parts.append(f'<div class="ix-legend">{legend}<span><i class="dash"></i>Market price</span>'
-                 '<span>Band = conservative → optimistic</span></div>')
+    parts.append(f'<div class="ix-legend">{legend}<span><i class="dash"></i>{t("Market price")}</span>'
+                 f'<span>{t("Band = conservative → optimistic")}</span></div>')
     return ''.join(parts)
 
 
@@ -108,11 +119,11 @@ def html_table(header, rows, header_classes=None):
     """header: [str]; rows: [(row_class, [(cell_text, cell_class)])]. Cell text is trusted, pre-escaped HTML."""
     hc = header_classes or [''] * len(header)
     head = ''.join(f'<th class="{c}">{h}</th>' for h, c in zip(header, hc))
-    body = ''.join(f'<tr class="{rc}">' + ''.join(f'<td class="{cc}">{t}</td>' for t, cc in cells) + '</tr>'
+    body = ''.join(f'<tr class="{rc}">' + ''.join(f'<td class="{cc}">{txt}</td>' for txt, cc in cells) + '</tr>'
                    for rc, cells in rows)
     return f'<div class="ix-table-wrap"><table class="ix-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
 
 
 def footer():
-    md('<div class="ix-footer"><span>INTRINSIC · Model 27 · Data: SEC EDGAR, Yahoo Finance, Damodaran (Jan 2026)</span>'
-       '<span>Student portfolio project — not a professional investment tool or investment advice</span></div>')
+    md(f'<div class="ix-footer"><span>{t("INTRINSIC · Model 27 · Data: SEC EDGAR, Yahoo Finance, Damodaran (Jan 2026)")}</span>'
+       f'<span>{t("Student portfolio project — not a professional investment tool or investment advice")}</span></div>')

@@ -475,3 +475,59 @@ MARK_SVG = (f'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"
             f'<path d="M3 13.5 L6.5 8.5 L9.5 10.5 L13 3" fill="none" stroke="{T["model"]}" stroke-width="1.6" '
             f'stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="3" r="1.6" fill="{T["model"]}"/>'
             f'<line x1="2.5" y1="14.5" x2="13.5" y2="14.5" stroke="{T["text3"]}" stroke-width="1"/></svg>')
+
+# ---------------------------------------------------------------- opening sequence
+# Shown once per browser session. A serif "I" resolves out of blur, a teal hairline draws under it,
+# the name types itself with a caret, then the curtain lifts and the workspace fades in. CSS only;
+# it never delays the calculations, which run underneath. Hidden under prefers-reduced-motion.
+INTRO_CSS = f"""<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@300&display=swap');
+.ix-intro {{ position: fixed; inset: 0; z-index: 2147483000; display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(900px 560px at 50% 46%, #121B26 0%, {T['bg']} 62%, #07090C 100%);
+  animation: ixCurtain 3.6s cubic-bezier(.7,0,.2,1) forwards; }}
+.ix-intro::before {{ content:""; position:absolute; width: 520px; height: 520px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(92,207,191,.10), transparent); filter: blur(10px);
+  animation: ixGlow 3.6s ease-out both; }}
+.ix-intro-inner {{ position: relative; display:flex; flex-direction:column; align-items:center; }}
+.ix-intro-mark {{ font: 300 clamp(120px,15vw,184px)/.86 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  color: {T['text']}; animation: ixMark 1.25s cubic-bezier(.2,.7,.2,1) .2s both; user-select:none;
+  text-shadow: 0 0 40px rgba(92,207,191,.12); }}
+.ix-intro-rule {{ width: 128px; height: 1px; background: {T['model']}; margin: 26px 0 20px; transform-origin: center;
+  box-shadow: 0 0 10px rgba(92,207,191,.65); animation: ixRule .85s cubic-bezier(.7,0,.2,1) 1.05s both; }}
+.ix-intro-word {{ position: relative; font: 500 14px/1 {SANS}; letter-spacing: .62em; padding-left: .62em;
+  color: {T['text']}; white-space: nowrap; clip-path: inset(0 100% 0 0);
+  animation: ixType 1.05s steps(9, end) 1.6s forwards; }}
+.ix-intro-word::after {{ content:""; position:absolute; top:-3px; bottom:-3px; left:0; width:1.5px; background:{T['model']};
+  box-shadow: 0 0 6px rgba(92,207,191,.8);
+  animation: ixCaret 1.05s steps(9, end) 1.6s forwards, ixCaretOut .2s linear 2.75s forwards; }}
+.ix-intro-tag {{ margin-top: 16px; font: 400 11px/1 {MONO}; letter-spacing: .2em; color: {T['text3']};
+  text-transform: uppercase; opacity: 0; animation: ixFadeIn .7s ease 2.55s forwards; }}
+@keyframes ixCurtain {{ 0%,82% {{ opacity:1; visibility: visible; }} 100% {{ opacity:0; visibility: hidden; pointer-events: none; }} }}
+@keyframes ixGlow {{ 0% {{ opacity:0; transform: scale(.8); }} 50% {{ opacity:1; }} 100% {{ opacity:.6; transform: scale(1.1); }} }}
+@keyframes ixMark {{ from {{ opacity:0; transform: translateY(16px) scale(.98); filter: blur(10px); }}
+  to {{ opacity:1; transform: none; filter: blur(0); }} }}
+@keyframes ixRule {{ from {{ transform: scaleX(0); }} to {{ transform: scaleX(1); }} }}
+@keyframes ixType {{ from {{ clip-path: inset(0 100% 0 0); }} to {{ clip-path: inset(0 0 0 0); }} }}
+@keyframes ixCaret {{ from {{ left: 0; }} to {{ left: 100%; }} }}
+@keyframes ixCaretOut {{ to {{ opacity: 0; }} }}
+@keyframes ixFadeIn {{ to {{ opacity: 1; }} }}
+@keyframes ixPop {{ from {{ opacity:0; transform: scale(.8); }} to {{ opacity:1; transform: none; }} }}
+/* the workspace waits behind the curtain, then fades in (the overlay's own container is excluded) */
+[data-testid="stMain"] [data-testid="stElementContainer"]:not(:has(.ix-intro)),
+[data-testid="stMain"] [data-testid="stHorizontalBlock"] {{ animation: ixFadeIn .9s cubic-bezier(.16,1,.3,1) 3.05s both; }}
+[data-testid="stHeader"] {{ animation: ixFadeIn .6s ease 3.05s both; }}
+/* sidebar brand: the mark appears, then the name types itself */
+.ix-brand .ix-mark.animate {{ animation: ixPop .6s cubic-bezier(.2,.8,.2,1.2) 3.15s both; }}
+.ix-brand b.animate {{ position: relative; width: max-content; clip-path: inset(0 100% 0 0);
+  animation: ixType .75s steps(9, end) 3.45s forwards; }}
+.ix-brand b.animate::after {{ content:""; position:absolute; top:0; bottom:0; left:0; width:1.5px; background:{T['model']};
+  animation: ixCaret .75s steps(9, end) 3.45s forwards, ixCaretOut .2s linear 4.35s forwards; }}
+.ix-brand span.animate {{ opacity:0; animation: ixFadeIn .6s ease 4.1s forwards; }}
+@media (prefers-reduced-motion: reduce) {{
+  .ix-intro {{ display:none !important; }}
+  [data-testid="stMain"] [data-testid="stElementContainer"], [data-testid="stMain"] [data-testid="stHorizontalBlock"],
+  [data-testid="stHeader"], .ix-brand .animate {{ animation: none !important; clip-path: none !important; opacity: 1 !important; }}
+  .ix-brand b.animate::after {{ display:none; }}
+}}
+</style>"""
+INTRO_CSS = '\n'.join(line for line in INTRO_CSS.splitlines() if line.strip())
