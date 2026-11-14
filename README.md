@@ -5,9 +5,15 @@
 Pick a company and Intrinsic downloads its 10-K financial statements from SEC EDGAR, audits the data, forecasts
 ten years of free cash flow to the firm (FCFF) with a single driver-based model, discounts it at a sourced WACC
 and shows the intrinsic value per share as a range next to the market price. Every assumption is labelled with
-where it comes from and stays editable.
+where it comes from and stays editable. The interface is available in **English and Spanish**.
 
-> Research tool built as a portfolio project. Not investment advice.
+![Intrinsic dashboard — Microsoft overview](docs/figures/overview_en.jpg)
+
+**Technical report:** [English (PDF)](docs/Intrinsic_Report_EN.pdf) · [Español (PDF)](docs/Intrinsic_Informe_ES.pdf)
+· [read on GitHub](docs/REPORT.md) · [leer en GitHub](docs/INFORME.md)
+
+> Portfolio project by a recent graduate, built to demonstrate financial modelling, data engineering and
+> quantitative validation. Research tool, not a professional investment product. Not investment advice.
 
 ---
 
@@ -147,10 +153,11 @@ intrinsic/              valuation engine
   industry_beta.py      SIC → Damodaran industry, Hamada relevering
   market_data.py, market_reference.py, sec_client.py, company_directory.py
   dashboard_panel.py    Overview · Forecast · Valuation · Sensitivity · Model & Data
-  ui/                   design system (theme.py: tokens, CSS, Plotly template) and HTML components
+  ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests
+tests/                  unit tests (79), including translation coverage
+docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```
 
