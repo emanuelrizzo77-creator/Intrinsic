@@ -1,6 +1,6 @@
 # Intrinsic — Automated DCF Valuation from SEC Filings
 
-**Technical report** · November 2026 · *Versión en español: [INFORME.md](INFORME.md)*
+**Technical report** · November 2026 · **Live app:** [intrinsic-dcf.streamlit.app](https://intrinsic-dcf.streamlit.app) · *Versión en español: [INFORME.md](INFORME.md)*
 
 > Intrinsic is a portfolio project built to demonstrate financial modelling, data engineering and
 > quantitative validation. It is a research tool, not a professional investment product, and nothing in it
@@ -280,6 +280,8 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
 equity-based engine for financial companies, segment-weighted betas, and consistent lease treatment in the WACC.
 
 ## 11. Reproducibility
+
+The dashboard runs live at https://intrinsic-dcf.streamlit.app. To run it locally:
 
 ```bash
 pip install -r requirements.txt

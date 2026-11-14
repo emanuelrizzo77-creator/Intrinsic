@@ -1,6 +1,6 @@
 # Intrinsic — Valoración DCF automatizada a partir de reportes de la SEC
 
-**Informe técnico** · Noviembre 2026 · *English version: [REPORT.md](REPORT.md)*
+**Informe técnico** · Noviembre 2026 · **App en vivo:** [intrinsic-dcf.streamlit.app](https://intrinsic-dcf.streamlit.app) · *English version: [REPORT.md](REPORT.md)*
 
 > Intrinsic es un proyecto de portafolio creado para demostrar modelación financiera, ingeniería de datos y
 > validación cuantitativa. Es una herramienta de investigación, no un producto profesional de inversión, y nada
@@ -291,6 +291,8 @@ rentabilidad), un motor basado en el patrimonio para empresas financieras, betas
 tratamiento consistente de los arrendamientos en el WACC.
 
 ## 11. Reproducibilidad
+
+El dashboard funciona en vivo en https://intrinsic-dcf.streamlit.app. Para correrlo localmente:
 
 ```bash
 pip install -r requirements.txt

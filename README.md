@@ -9,7 +9,7 @@ where it comes from and stays editable. The interface is available in **English 
 
 ![Intrinsic dashboard — Microsoft overview](docs/figures/overview_en.jpg)
 
-**Technical report:** [English (PDF)](docs/Intrinsic_Report_EN.pdf) · [Español (PDF)](docs/Intrinsic_Informe_ES.pdf)
+**Live app:** [intrinsic-dcf.streamlit.app](https://intrinsic-dcf.streamlit.app) · **Technical report:** [English (PDF)](docs/Intrinsic_Report_EN.pdf) · [Español (PDF)](docs/Intrinsic_Informe_ES.pdf)
 · [read on GitHub](docs/REPORT.md) · [leer en GitHub](docs/INFORME.md)
 
 > Portfolio project by a recent graduate, built to demonstrate financial modelling, data engineering and
