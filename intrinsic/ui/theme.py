@@ -253,6 +253,16 @@ table.ix-table {{ width:100%; border-collapse: collapse; font-size: .8rem; }}
 .ix-metric:last-child .intrinsic-tip, .ix-hero-cell:last-child .intrinsic-tip {{ left:auto; right:0; transform: translate(0,3px); }}
 .ix-metric:last-child .intrinsic-help:hover .intrinsic-tip, .ix-hero-cell:last-child .intrinsic-help:hover .intrinsic-tip {{
   transform: translate(0,0); }}
+/* The block that holds an open tooltip comes to the front. Without this the tooltip stays inside its block's
+   layer (entrance animations and glass panels create one) and the selected section/scenario button, which
+   carries its own z-index, is drawn on top of it. */
+[data-testid="stElementContainer"]:has(.intrinsic-help:hover),
+[data-testid="stElementContainer"]:has(.intrinsic-help:focus-visible) {{ position: relative; z-index: 1000; }}
+/* Same inside a block: hero cells, metric tiles and glossary chips each form their own layer, so the
+   neighbour drawn later (a big number) would cover the tooltip. The hovered one comes forward. */
+:is(.ix-hero-cell, .ix-metric, .intrinsic-glossary-item, .ix-strip > div):has(.intrinsic-help:hover),
+:is(.ix-hero-cell, .ix-metric, .intrinsic-glossary-item, .ix-strip > div):has(.intrinsic-help:focus-visible) {{
+  position: relative; z-index: 20; }}
 .intrinsic-glossary {{ display:flex; flex-wrap:wrap; gap:6px; margin: 0 0 12px; }}
 .intrinsic-glossary-item {{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--ix-line);
   border-radius: 4px; padding: 3px 8px; color: var(--ix-text2); font-size: .74rem; }}
