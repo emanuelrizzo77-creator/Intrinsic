@@ -463,6 +463,8 @@ SPATIAL_CSS = """<style>
   color var(--dur-micro) ease; backdrop-filter: blur(10px); }
 [data-testid="stButtonGroup"] button[aria-checked="true"] {
   box-shadow: 0 0 0 1px rgba(92,207,191,.45), 0 0 18px -4px rgba(92,207,191,.45); }
+/* six section tabs: wrap onto a second row instead of hiding behind a scrollbar */
+.st-key-intrinsic_section_27 [data-testid="stButtonGroup"] > div { flex-wrap: wrap; row-gap: 6px; overflow-x: visible; }
 
 /* ---- small screens: lighter glass, no floor */
 @media (max-width: 860px) {

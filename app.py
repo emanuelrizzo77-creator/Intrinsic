@@ -399,6 +399,17 @@ if wacc_mode == "Automatic Calculation":
     )
 
     wacc = wacc_result["wacc"]
+    capm_inputs = {
+        "risk_free_rate": risk_free_rate,
+        "beta": beta,
+        "equity_risk_premium": equity_risk_premium,
+        "cost_of_equity": wacc_result["cost_of_equity"],
+        "after_tax_cost_of_debt": wacc_result["after_tax_cost_of_debt"],
+        "equity_weight": wacc_result["equity_weight"],
+        "debt_weight": wacc_result["debt_weight"],
+        "beta_source": (_bu["industry"] if beta_basis != _REGRESSION and _bu.get("beta") is not None
+                        else t("stock regression (Blume)")),
+    }
 
     wacc_box.markdown(
         '<div class="ix-state">' + ui.kv_rows(
@@ -414,6 +425,7 @@ if wacc_mode == "Automatic Calculation":
         "implied ERP and industry beta, synthetic-rating cost of debt, 25% marginal tax."))
 
 else:
+    capm_inputs = None
     wacc = wacc_box.number_input(
         t("Manual WACC (%)"),
         min_value=1.0,
@@ -510,4 +522,5 @@ render_model_27(ticker, wacc, terminal_growth, market_price, shares_outstanding,
     "g_changed": _g_changed,
     "sic": (_route or {}).get("sic"),
     "industry": (_route or {}).get("sic_description"),
+    "capm": capm_inputs,
 })

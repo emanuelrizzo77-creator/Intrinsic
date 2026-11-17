@@ -246,6 +246,43 @@ ES = {
     'Valuation': 'Valoración',
     'Sensitivity': 'Sensibilidad',
     'Model & Data': 'Modelo y datos',
+    'Risk & return': 'Riesgo y rendimiento',
+    'Security Market Line': 'Línea del mercado de valores (SML)',
+    '{scen} scenario · CAPM required return vs the return implied by the market price':
+        'Escenario {scen} · rendimiento requerido por CAPM vs el implícito en el precio de mercado',
+    'Needs the automatic discount rate': 'Requiere la tasa de descuento automática',
+    'The Security Market Line is built from the beta, risk-free rate and equity risk premium. With a manual WACC those '
+    'inputs are unknown; switch the discount rate to Automatic Calculation in the sidebar.':
+        'La línea del mercado de valores se construye con la beta, la tasa libre de riesgo y la prima de riesgo del '
+        'mercado. Con un WACC manual esos datos no se conocen; cambia la tasa de descuento a Cálculo automático en la '
+        'barra lateral.',
+    'Required return': 'Rendimiento requerido',
+    'Implied return': 'Rendimiento implícito',
+    'Alpha': 'Alfa',
+    '{rf} + {b:.2f} × {erp}': '{rf} + {b:.2f} × {erp}',
+    'at market price {mp}': 'al precio de mercado {mp}',
+    'implied − required': 'implícito − requerido',
+    'Reference': 'Referencia',
+    'Risk-free': 'Libre de riesgo',
+    'Market': 'Mercado',
+    'Expected return (%)': 'Rendimiento esperado (%)',
+    'stock regression (Blume)': 'regresión de la acción (Blume)',
+    'No implied return: the market price is outside the values the model produces for a discount rate between '
+    'terminal growth and 40%.':
+        'Sin rendimiento implícito: el precio de mercado está fuera de los valores que el modelo produce con una tasa '
+        'de descuento entre el crecimiento terminal y 40%.',
+    'Above the line: at {mp} the stock offers more return than CAPM requires for its beta — it looks undervalued for '
+    'its risk.':
+        'Sobre la línea: a {mp} la acción ofrece más rendimiento del que CAPM exige para su beta — parece '
+        'infravalorada para su riesgo.',
+    'Below the line: at {mp} the stock offers less return than CAPM requires for its beta — it looks overvalued for '
+    'its risk.':
+        'Bajo la línea: a {mp} la acción ofrece menos rendimiento del que CAPM exige para su beta — parece '
+        'sobrevalorada para su riesgo.',
+    "Implied return = cost of equity that makes the DCF value equal the market price (implied WACC {w}, capital weights "
+    "held at market values). The beta that would justify today's price is {bi:.2f}.":
+        'Rendimiento implícito = costo del patrimonio con el que el valor DCF iguala el precio de mercado (WACC implícito '
+        '{w}, pesos de capital a valor de mercado). La beta que justificaría el precio actual es {bi:.2f}.',
     'Scenario': 'Escenario',
     'Conservative': 'Conservador',
     'Base': 'Base',
@@ -487,6 +524,14 @@ ES = {
 }
 
 GLOSSARY_ES = {
+    'Security Market Line': ('Línea del mercado de valores', 'Recta del CAPM: rendimiento requerido = tasa libre de '
+                             'riesgo + beta × prima de riesgo del mercado. Toda acción con precio justo está sobre ella.'),
+    'Beta': ('Beta', 'Sensibilidad de la acción al mercado. Beta 1 se mueve con el mercado; mayor que 1 lo amplifica.'),
+    'Required return': ('Rendimiento requerido', 'Rendimiento que exigen los inversionistas por el riesgo de la acción: '
+                        'el costo del patrimonio según CAPM, un punto sobre la recta.'),
+    'Implied return': ('Rendimiento implícito', 'Costo del patrimonio con el que el valor DCF iguala el precio de mercado '
+                       'actual: lo que se gana comprando a ese precio si se cumple la proyección.'),
+    'Alpha': ('Alfa', 'Rendimiento implícito − requerido. Positivo (sobre la recta) = barata para su riesgo; negativo = cara.'),
     'Intrinsic value': ('Valor intrínseco', 'Valor justo estimado por acción: valor presente de los flujos de caja '
                         'libres proyectados más el valor terminal, menos la deuda neta, dividido por las acciones diluidas.'),
     'Market price': ('Precio de mercado', 'Referencia actual del precio de la acción (Yahoo Finance o tu dato manual).'),

@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from intrinsic import forecast as dm
+from intrinsic import sml
 from intrinsic.inputs import DataUnavailable, load_inputs
 from intrinsic.sec_data import is_number
 from intrinsic.paths import ROOT
@@ -81,6 +82,13 @@ GLOSSARY = {
     'Sensitivity matrix': 'Intrinsic value per share for different WACC and terminal growth combinations. '
                           'Not a probability forecast.',
     'Terminal share': 'Share of enterprise value that comes from cash flows after year 10 (PV of terminal value / EV).',
+    'Security Market Line': 'CAPM line: required return = risk-free rate + beta × equity risk premium. Every '
+                            'fairly priced stock sits on it.',
+    'Beta': 'Sensitivity of the stock to the market. Beta 1 moves with the market; above 1 amplifies it.',
+    'Required return': 'Return investors demand for the stock\'s risk: the CAPM cost of equity, a point on the line.',
+    'Implied return': 'Cost of equity at which the DCF value equals today\'s market price: the return earned buying '
+                      'at the market price if the forecast comes true.',
+    'Alpha': 'Implied return − required return. Positive (above the line) = cheap for its risk; negative = expensive.',
 }
 
 
@@ -583,6 +591,98 @@ def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
                        file_name=f'intrinsic_{ticker.lower()}_sensitivity_{scen}.csv', mime='text/csv')
 
 
+def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
+    ui.heading(t('Security Market Line'),
+               t('{scen} scenario · CAPM required return vs the return implied by the market price',
+                 scen=escape(scenario(scen))))
+    _glossary(['Security Market Line', 'Beta', 'Required return', 'Implied return', 'Alpha'])
+    if not capm:
+        ui.state_card(t('Needs the automatic discount rate'),
+                      t('The Security Market Line is built from the beta, risk-free rate and equity risk premium. '
+                        'With a manual WACC those inputs are unknown; switch the discount rate to Automatic Calculation '
+                        'in the sidebar.'))
+        return
+    rf, beta, erp = capm['risk_free_rate'], capm['beta'], capm['equity_risk_premium']
+    required = sml.required_return(rf, beta, erp)
+    br = data['bridge']
+
+    def value_at(w):
+        out = dm.run(data['history'], wacc=w, terminal_growth=g, net_debt=br['net_debt'], shares=br['shares'],
+                     scenario=scen, overrides=overrides or None, rd_life=data['rd_life'], rd_life_note=data['rd_note'])
+        return _price(out)
+
+    implied_w = _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at)
+    implied = (sml.implied_cost_of_equity(implied_w, capm['after_tax_cost_of_debt'], capm['equity_weight'],
+                                          capm['debt_weight']) if implied_w is not None else None)
+    alpha = implied - required if implied is not None else None
+    b_implied = sml.implied_beta(implied, rf, erp)
+
+    a_cls = '' if alpha is None else ('pos' if alpha >= 0 else 'neg')
+    ui.md('<div class="ix-metrics">'
+          + ui.metric(t('Beta'), f'{beta:.2f}', escape(capm.get('beta_source') or ''), '', _help('Beta'))
+          + ui.metric(t('Required return'), ui.pct(required),
+                      t('{rf} + {b:.2f} × {erp}', rf=ui.pct(rf), b=beta, erp=ui.pct(erp)), 'model', _help('Required return'))
+          + ui.metric(t('Implied return'), ui.pct(implied), t('at market price {mp}', mp=ui.usd(market_price)), '',
+                      _help('Implied return'))
+          + ui.metric(t('Alpha'), ui.pct(alpha, signed=True), t('implied − required'), a_cls, _help('Alpha'))
+          + '</div>')
+
+    pts = [beta, 1.0] + ([b_implied] if b_implied is not None else [])
+    beta_max = min(max(2.0, max(pts) * 1.25), 4.0)
+    xs, ys = sml.line(rf, erp, beta_max)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=xs, y=[y * 100 for y in ys], mode='lines', name=t('Security Market Line'),
+                             line=dict(color=T['text3'], width=2),
+                             hovertemplate='β %{x:.2f}<br>' + t('Required return') + ' %{y:.2f}%<extra></extra>'))
+    fig.add_trace(go.Scatter(x=[0, 1], y=[rf * 100, (rf + erp) * 100], mode='markers', name=t('Reference'),
+                             marker=dict(size=9, color=T['market'], symbol='diamond'), cliponaxis=False,
+                             text=[t('Risk-free'), t('Market')],
+                             hovertemplate='%{text}<br>β %{x:.2f} · %{y:.2f}%<extra></extra>'))
+    for x, y, label, anchor in ((0, rf, t('Risk-free'), 'left'), (1, rf + erp, t('Market'), 'right')):
+        fig.add_annotation(x=x, y=y * 100, text=label, showarrow=False, xanchor=anchor, yanchor='bottom',
+                           xshift=6 if anchor == 'left' else -6, yshift=4, font=dict(size=11, color=T['text2']))
+    fig.add_trace(go.Scatter(x=[beta], y=[required * 100], mode='markers', name=t('Required return'),
+                             marker=dict(size=13, color=T['model'], line=dict(color=T['bg'], width=2)),
+                             hovertemplate=t('Required return') + '<br>β %{x:.2f} · %{y:.2f}%<extra></extra>'))
+    if implied is not None:
+        col = T['pos'] if alpha >= 0 else T['neg']
+        fig.add_trace(go.Scatter(x=[beta, beta], y=[required * 100, implied * 100], mode='lines', showlegend=False,
+                                 line=dict(color=col, width=2, dash='dot'), hoverinfo='skip'))
+        fig.add_trace(go.Scatter(x=[beta], y=[implied * 100], mode='markers', name=t('Implied return'),
+                                 marker=dict(size=13, color=col, symbol='circle-open', line=dict(width=3)),
+                                 hovertemplate=t('Implied return') + '<br>β %{x:.2f} · %{y:.2f}%<extra></extra>'))
+        fig.add_annotation(x=beta, y=(required + implied) / 2 * 100, text=f'α {alpha * 100:+.2f}%', showarrow=False,
+                           xanchor='left', xshift=10, font=dict(size=12, color=col, family="'IBM Plex Mono', monospace"))
+    fig.update_layout(template='intrinsic', height=440, hovermode='closest', xaxis_title='Beta (β)',
+                      yaxis_title=t('Expected return (%)'),
+                      legend=dict(orientation='h', yanchor='bottom', y=1.02, x=0))
+    fig.update_xaxes(range=[0, beta_max], showgrid=True)
+    fig.update_yaxes(ticksuffix='%', rangemode='tozero')
+    _chart(fig, key='sml')
+    if implied is None:
+        st.caption(t('No implied return: the market price is outside the values the model produces for a discount rate '
+                     'between terminal growth and 40%.'))
+    else:
+        verdict = (t('Above the line: at {mp} the stock offers more return than CAPM requires for its beta — it looks '
+                     'undervalued for its risk.', mp=ui.usd(market_price)) if alpha >= 0 else
+                   t('Below the line: at {mp} the stock offers less return than CAPM requires for its beta — it looks '
+                     'overvalued for its risk.', mp=ui.usd(market_price)))
+        st.caption(verdict + ' ' + t('Implied return = cost of equity that makes the DCF value equal the market price '
+                                     '(implied WACC {w}, capital weights held at market values). The beta that would '
+                                     'justify today\'s price is {bi:.2f}.', w=ui.pct(implied_w), bi=b_implied))
+
+
+def _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at):
+    """Solve for the WACC that equates the DCF value to the market price (cached per inputs)."""
+    br = data['bridge']
+    key = (ticker, br['net_debt'], br['shares'], scen, round(g, 6),
+           json.dumps(overrides or {}, sort_keys=True, default=str), round(market_price or 0, 4))
+    cache = st.session_state.setdefault('ix_sml_cache', {})
+    if key not in cache:
+        cache[key] = sml.implied_wacc(value_at, market_price, lo=g + 0.0025, hi=0.40, tol=1e-5)
+    return cache[key]
+
+
 def _model_data(results, scen, data):
     ui.heading(t('Model & data'), t('What is validated, where each assumption comes from, and every data check'))
     note = _validation_note()
@@ -681,7 +781,8 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
     nav, pick = st.columns([3, 2], vertical_alignment='bottom')
     with nav:
         section = st.segmented_control(t('Dashboard section'),
-                                       options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Model & Data'],
+                                       options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Risk & return',
+                                                'Model & Data'],
                                        format_func=t, default='Overview', key='intrinsic_section_27',
                                        label_visibility='collapsed') or 'Overview'
     with pick:
@@ -716,6 +817,8 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         _valuation(results, scen, data)
     elif section == 'Sensitivity':
         _sensitivity(data, scen, wacc, terminal_growth, overrides, market_price, ticker)
+    elif section == 'Risk & return':
+        _risk_return(ticker, scen, data, terminal_growth, overrides, market_price, ctx.get('capm'))
     elif section == 'Model & Data':
         _model_data(results, scen, data)
     else:
