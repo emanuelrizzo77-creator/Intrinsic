@@ -9,7 +9,7 @@ sys.path.insert(0, ROOT)
 
 from intrinsic.ui.i18n import ES, GLOSSARY_ES  # noqa: E402
 
-UI_FILES = ('app.py', 'intrinsic/dashboard_panel.py', 'intrinsic/ui/components.py')
+UI_FILES = ('app.py', 'intrinsic/dashboard_panel.py', 'intrinsic/bank_panel.py', 'intrinsic/ui/components.py')
 
 
 def _const(node):

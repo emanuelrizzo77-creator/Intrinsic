@@ -17,6 +17,7 @@ except Exception:   # no secrets file locally: the environment variable is used 
 
 from intrinsic.company_directory import fetch_sec_directory
 from intrinsic.dashboard_panel import render_model_27
+from intrinsic.bank_panel import render_bank
 from intrinsic.inputs import DataUnavailable
 from intrinsic.industry_beta import bottom_up_beta, load_industry_betas
 from intrinsic.wacc_inputs import (risk_free_rate as _live_risk_free_rate, equity_risk_premium as equity_risk_premium_default,
@@ -181,9 +182,10 @@ except Exception:
     _route = None          # classification unavailable: let the model's own checks decide
 # Do not silently value Alphabet using Microsoft assumptions.
 _valued = not _route or _route["model"] == "fcff"
+_bank = bool(_route) and _route["model"] == "bank_equity"
 st.markdown(
     f"""<div class="ix-head"><div>
-      <div class="ix-eyebrow"><span>{t("Equity valuation")}</span><span>·</span><b>{t("DCF · FCFF, 10-year") if _valued else t("Not valued")}</b>
+      <div class="ix-eyebrow"><span>{t("Equity valuation")}</span><span>·</span><b>{t("DCF · FCFF, 10-year") if _valued else (t("Bank · excess return + DDM") if _bank else t("Not valued"))}</b>
         <span>·</span><span>{t("Research tool, not investment advice")}</span></div>
       <div class="ix-name"><h1>{html_escape(company_name)}</h1><span class="ix-ticker">{html_escape(ticker)}</span></div>
     </div><div>{ui.tag(t("Universal engine · beta"), "warn") if new_company else ui.tag(t("Top 25 · fully tested"), "plain")}</div>
@@ -191,6 +193,11 @@ st.markdown(
 )
 # Filled by the dashboard once SEC and market data are loaded (company metadata strip).
 header_strip = st.container()
+
+# Banks: equity-based engine (excess return + dividend discount), with its own sidebar and workspace.
+if _bank:
+    render_bank(ticker, header_strip, cargar_tasa_libre_riesgo, equity_risk_premium_default(), TERMINAL_GROWTH)
+    st.stop()
 
 if _route and _route["model"] != "fcff":
     _why = t({

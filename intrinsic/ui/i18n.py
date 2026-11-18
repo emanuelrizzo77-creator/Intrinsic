@@ -247,6 +247,145 @@ ES = {
     'Sensitivity': 'Sensibilidad',
     'Model & Data': 'Modelo y datos',
     'Risk & return': 'Riesgo y rendimiento',
+    # ---- bank engine (excess return + dividend discount)
+    'Bank · excess return + DDM': 'Banco · retorno en exceso + DDM',
+    'Bank assumptions': 'Supuestos del banco',
+    'Cost of equity (CAPM)': 'Costo del patrimonio (CAPM)',
+    'Beta basis': 'Base de la beta',
+    'Industry: {name} (levered)': 'Industria: {name} (apalancada)',
+    'Damodaran levered beta for {name} ({n} US firms, Jan 2026). For banks the levered beta is used directly: deposits '
+    'are operating liabilities, so un/re-levering with debt is not meaningful.':
+        'Beta apalancada de Damodaran para {name} ({n} empresas de EE. UU., ene 2026). En bancos se usa directamente la '
+        'beta apalancada: los depósitos son pasivos operativos, así que desapalancar y reapalancar con deuda no tiene sentido.',
+    'Yahoo regression beta {raw:.2f} with the Blume adjustment (0.67 × raw + 0.33).':
+        'Beta de regresión de Yahoo {raw:.2f} con el ajuste de Blume (0.67 × bruta + 0.33).',
+    'Risk-free rate': 'Tasa libre de riesgo',
+    'Equity risk premium': 'Prima de riesgo del mercado',
+    'Price: Yahoo Finance. Shares: {src}, {date}.': 'Precio: Yahoo Finance. Acciones: {src}, {date}.',
+    'ROE today (%)': 'ROE actual (%)',
+    'Long-run ROE (%)': 'ROE de largo plazo (%)',
+    'Payout ratio today (%)': 'Tasa de pago actual (%)',
+    'Base-scenario model values. Editing one applies it to every scenario.':
+        'Valores del modelo en el escenario base. Si editas uno, se aplica a todos los escenarios.',
+    'You are viewing YOUR case: bank assumptions changed from model values.':
+        'Estás viendo TU caso: los supuestos del banco cambiaron respecto a los valores del modelo.',
+    'Valuation blocked': 'Valoración bloqueada',
+    'Total assets': 'Activos totales',
+    'Deposits': 'Depósitos',
+    'Excess return · {scen}': 'Retorno en exceso · {scen}',
+    'Dividend discount · {scen}': 'Descuento de dividendos · {scen}',
+    'Book value + PV of returns above the cost of equity': 'Valor contable + VP de los retornos sobre el costo del patrimonio',
+    'PV of dividends + buybacks to common shareholders': 'VP de dividendos + recompras a los accionistas comunes',
+    'Midpoint {mid} vs market price {mp}': 'Punto medio {mid} vs precio de mercado {mp}',
+    'Valuation range vs market price (midpoint of both models)':
+        'Rango de valoración vs precio de mercado (punto medio de ambos modelos)',
+    'Book value / share': 'Valor contable / acción',
+    'common equity · SEC': 'patrimonio común · SEC',
+    'Justified P/B': 'P/VC justificado',
+    'market P/B {pb:.2f}×': 'P/VC de mercado {pb:.2f}×',
+    'CAPM': 'CAPM',
+    'ROE': 'ROE',
+    'latest year': 'último año',
+    'Long-run ROE': 'ROE de largo plazo',
+    'Model gap': 'Brecha entre modelos',
+    'DDM vs excess return': 'DDM vs retorno en exceso',
+    'The bank is expected to keep earning <b>{s} above</b> its cost of equity in the long run, so it is worth more '
+    'than its book value.':
+        'Se espera que el banco siga ganando <b>{s} por encima</b> de su costo del patrimonio en el largo plazo, así que '
+        'vale más que su valor contable.',
+    'In the long run the bank earns only its cost of equity, so growth adds no value and the price converges to book '
+    'value.':
+        'En el largo plazo el banco gana solo su costo del patrimonio, así que el crecimiento no agrega valor y el precio '
+        'converge al valor contable.',
+    '<b>Two models, one range.</b> With perfectly consistent inputs both give the same value. Here the excess-return '
+    'model follows book value and ROE, while the DDM follows the bank&#39;s actual payout policy; a large gap means '
+    'today&#39;s payout and growth differ from what the ROE path implies.':
+        '<b>Dos modelos, un rango.</b> Con supuestos perfectamente consistentes ambos dan el mismo valor. Aquí el modelo '
+        'de retorno en exceso sigue el valor contable y el ROE, mientras que el DDM sigue la política de pagos real del '
+        'banco; una brecha grande significa que el pago y el crecimiento actuales difieren de lo que implica la '
+        'trayectoria del ROE.',
+    '<b>Why not FCFF:</b> deposits and borrowings are a bank&#39;s raw material, not financing, so free cash flow to '
+    'the firm and WACC do not apply. Both models discount at the cost of equity.':
+        '<b>Por qué no FCFF:</b> los depósitos y préstamos son la materia prima de un banco, no su financiamiento, así '
+        'que el flujo de caja libre de la empresa y el WACC no aplican. Ambos modelos descuentan al costo del patrimonio.',
+    'Return on equity: history and forecast': 'Rendimiento sobre el patrimonio: historia y proyección',
+    "Fades from today's level to the long-run level; the dotted line is the cost of equity":
+        'Converge del nivel actual al de largo plazo; la línea punteada es el costo del patrimonio',
+    'Cost of equity {ke}': 'Costo del patrimonio {ke}',
+    'Year': 'Año',
+    'Book value, start (USD B)': 'Valor contable inicial (USD B)',
+    'Net income to common (USD B)': 'Utilidad neta para comunes (USD B)',
+    'Excess return (USD B)': 'Retorno en exceso (USD B)',
+    'PV of excess return (USD B)': 'VP del retorno en exceso (USD B)',
+    'DDM: earnings growth': 'DDM: crecimiento de utilidades',
+    'DDM: payout ratio': 'DDM: tasa de pago',
+    'DDM: dividends + buybacks (USD B)': 'DDM: dividendos + recompras (USD B)',
+    'DDM: present value (USD B)': 'DDM: valor presente (USD B)',
+    '10-year projection · {scen}': 'Proyección a 10 años · {scen}',
+    'Valuation bridge · {scen}': 'Puente de valoración · {scen}',
+    'From book value to equity value, and from payouts to equity value':
+        'Del valor contable al valor del patrimonio, y de los pagos al valor del patrimonio',
+    'Book value': 'Valor contable',
+    'PV excess returns': 'VP retornos en exceso',
+    'PV terminal': 'VP terminal',
+    'PV dividends + buybacks': 'VP dividendos + recompras',
+    'Excess return model (USD B)': 'Modelo de retorno en exceso (USD B)',
+    'Dividend discount model (USD B)': 'Modelo de descuento de dividendos (USD B)',
+    'Terminal value share': 'Peso del valor terminal',
+    'Shares': 'Acciones',
+    'Value per share': 'Valor por acción',
+    'Implied P/B': 'P/VC implícito',
+    'Excess return': 'Retorno en exceso',
+    'Dividend discount': 'Descuento de dividendos',
+    'Model': 'Modelo',
+    'Cost of equity × terminal growth sensitivity': 'Sensibilidad costo del patrimonio × crecimiento terminal',
+    '{scen} scenario · value per share and upside vs market price':
+        'Escenario {scen} · valor por acción y potencial vs precio de mercado',
+    'Colour midpoint = market price (${mp:,.2f}). Outlined cell = current inputs. N/A = cost of equity not above growth, '
+    'or long-run ROE not above growth.':
+        'Punto medio del color = precio de mercado (${mp:,.2f}). Celda marcada = supuestos actuales. N/A = costo del '
+        'patrimonio no mayor que el crecimiento, o ROE de largo plazo no mayor que el crecimiento.',
+    'No implied return: the market price is outside the values the excess-return model produces for a cost of equity '
+    'between terminal growth and 40%.':
+        'Sin rendimiento implícito: el precio de mercado está fuera de los valores que produce el modelo de retorno en '
+        'exceso con un costo del patrimonio entre el crecimiento terminal y 40%.',
+    "Implied return = cost of equity at which the excess-return value equals the market price. The beta that would "
+    "justify today's price is {bi:.2f}.":
+        'Rendimiento implícito = costo del patrimonio con el que el valor por retorno en exceso iguala el precio de '
+        'mercado. La beta que justificaría el precio actual es {bi:.2f}.',
+    'Where each assumption comes from, and the SEC history behind it':
+        'De dónde viene cada supuesto y la historia de la SEC que lo respalda',
+    'The bank engine has not been backtested out of sample yet (the FCFF model has). Fade speed and scenario rules are '
+    'economic assumptions. Use the range, not a single number.':
+        'El motor bancario aún no se ha probado fuera de muestra (el modelo FCFF sí). La velocidad de convergencia y las '
+        'reglas de escenarios son supuestos económicos. Usa el rango, no un solo número.',
+    'SEC history (USD B unless noted)': 'Historia SEC (USD B salvo indicación)',
+    'SEC tags and data notes': 'Etiquetas SEC y notas de datos',
+    'Method: excess-return (residual income) model and two-stage dividend discount model on total payout, both '
+    'discounted at the CAPM cost of equity; ROE fades from its recent level to its long-run level.':
+        'Método: modelo de retorno en exceso (ingreso residual) y modelo de descuento de dividendos en dos etapas sobre '
+        'el pago total, ambos descontados al costo del patrimonio CAPM; el ROE converge de su nivel reciente al de '
+        'largo plazo.',
+    # driver and history labels
+    'ROE today': 'ROE actual',
+    'Fade speed': 'Velocidad de convergencia',
+    'Book value growth today': 'Crecimiento del valor contable actual',
+    'Payout ratio today': 'Tasa de pago actual',
+    'Sustainable growth today': 'Crecimiento sostenible actual',
+    'Stable payout ratio': 'Tasa de pago estable',
+    'Normalized earnings': 'Utilidad normalizada',
+    'Common book value': 'Valor contable común',
+    'Net income to common': 'Utilidad neta para comunes',
+    'Common equity': 'Patrimonio común',
+    'Tangible common equity': 'Patrimonio común tangible',
+    'ROTCE': 'ROTCE',
+    'Common dividends': 'Dividendos comunes',
+    'Buybacks': 'Recompras',
+    'Payout ratio': 'Tasa de pago',
+    'Net interest income': 'Ingreso neto por intereses',
+    'Noninterest income': 'Ingresos no financieros',
+    'Credit provisions': 'Provisiones de crédito',
+    'Diluted EPS': 'UPA diluida',
     'Security Market Line': 'Línea del mercado de valores (SML)',
     '{scen} scenario · CAPM required return vs the return implied by the market price':
         'Escenario {scen} · rendimiento requerido por CAPM vs el implícito en el precio de mercado',
@@ -524,6 +663,22 @@ ES = {
 }
 
 GLOSSARY_ES = {
+    'Excess return model': ('Modelo de retorno en exceso', 'Valor del banco = valor contable común + valor presente de '
+                            'las utilidades futuras por encima del costo del patrimonio ((ROE − Ke) × valor contable).'),
+    'Dividend discount model': ('Modelo de descuento de dividendos', 'Valor del banco = valor presente de dividendos y '
+                                'recompras a los accionistas comunes, en dos etapas: pago y crecimiento actuales, luego '
+                                'una fase estable.'),
+    'Book value': ('Valor contable', 'Patrimonio común en el balance (patrimonio total − acciones preferentes), por acción.'),
+    'Justified P/B': ('P/VC justificado', 'Relación precio/valor contable que respalda el modelo de retorno en exceso: '
+                      'valor del patrimonio / valor contable. Mayor que 1 solo si el ROE de largo plazo supera el costo '
+                      'del patrimonio.'),
+    'Cost of equity': ('Costo del patrimonio', 'Rendimiento que exigen los accionistas (CAPM: tasa libre de riesgo + beta × '
+                       'prima de riesgo). Los bancos se descuentan a esta tasa, no al WACC.'),
+    'ROE': ('ROE', 'Rendimiento sobre el patrimonio: utilidad neta para comunes / patrimonio común al inicio del año.'),
+    'Long-run ROE': ('ROE de largo plazo', 'ROE que se supone gana el banco después del periodo de convergencia; la '
+                     'diferencia con el costo del patrimonio genera el valor.'),
+    'Model gap': ('Brecha entre modelos', 'Valor por descuento de dividendos vs valor por retorno en exceso. Una brecha '
+                  'grande indica una política de pagos o crecimiento que no coincide con la trayectoria del ROE.'),
     'Security Market Line': ('Línea del mercado de valores', 'Recta del CAPM: rendimiento requerido = tasa libre de '
                              'riesgo + beta × prima de riesgo del mercado. Toda acción con precio justo está sobre ella.'),
     'Beta': ('Beta', 'Sensibilidad de la acción al mercado. Beta 1 se mueve con el mercado; mayor que 1 lo amplifica.'),

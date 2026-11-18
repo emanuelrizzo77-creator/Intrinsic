@@ -89,6 +89,19 @@ GLOSSARY = {
     'Implied return': 'Cost of equity at which the DCF value equals today\'s market price: the return earned buying '
                       'at the market price if the forecast comes true.',
     'Alpha': 'Implied return − required return. Positive (above the line) = cheap for its risk; negative = expensive.',
+    'Excess return model': 'Bank value = common book value + present value of future profits above the cost of equity '
+                           '((ROE − Ke) × book value).',
+    'Dividend discount model': 'Bank value = present value of dividends and buybacks to common shareholders, in two '
+                               'stages: today\'s payout and growth, then a stable phase.',
+    'Book value': 'Common equity on the balance sheet (total equity − preferred stock), per share.',
+    'Justified P/B': 'Price-to-book ratio the excess-return model supports: equity value / book value. Above 1 only if '
+                     'long-run ROE exceeds the cost of equity.',
+    'Cost of equity': 'Return shareholders require (CAPM: risk-free rate + beta × equity risk premium). Banks are '
+                      'discounted at this rate, not at WACC.',
+    'ROE': 'Return on equity: net income to common / common equity at the start of the year.',
+    'Long-run ROE': 'ROE the bank is assumed to earn after the fade period; the gap to the cost of equity drives value.',
+    'Model gap': 'Dividend discount value vs excess-return value. Large gaps flag a payout or growth policy that does '
+                 'not match the ROE path.',
 }
 
 
