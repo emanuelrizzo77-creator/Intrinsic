@@ -28,7 +28,7 @@ Tres decisiones de diseño lo distinguen de un DCF típico de estudiante:
    con 800 empresas que el modelo nunca había visto, proyectando desde 2019. Cumplió los cinco. Las ideas que
    perdieron fuera de muestra se descartaron y quedaron documentadas.
 3. **Rechaza en lugar de adivinar.** Los estados financieros faltantes bloquean la valoración en vez de rellenarse
-   con ceros; bancos, aseguradoras, REIT, emisores extranjeros y empresas con pérdidas se rechazan mostrando el
+   con ceros; aseguradoras, REIT, emisores extranjeros y empresas en etapa de desarrollo se rechazan mostrando el
    motivo.
 
 ## 2. El problema
@@ -110,6 +110,20 @@ Cada impulsor sigue la misma regla: parte de la última observación y converge 
 | Impuestos | tasa efectiva → 25% marginal al año 10 | 21% federal + ~4% estatal |
 | Valor terminal | NOPAT<sub>H+1</sub> · (1 − g / RONIC) / (WACC − g) | reinversión consistente con el crecimiento |
 
+**Empresas con pérdidas (noviembre 2026).** Cuando la mediana de nueve años del margen de la empresa no es
+positiva, o la convergencia todavía deja una pérdida operativa en el año 10, la mediana no puede ser el ancla:
+proyectaría pérdidas para siempre. En su lugar, el margen avanza en línea recta desde el nivel actual hasta el
+margen operativo de su **industria** (Damodaran, enero 2026, con el mismo mapeo SIC que la beta; el del mercado
+de EE. UU. sin financieras cuando la industria es pequeña o pierde dinero) en 7 años, y el valor se pondera por
+una probabilidad de quiebra: valor = (1 − p) · valor de empresa en marcha + p · caja neta (mínimo cero). La p por
+defecto sale de cuántos años de caja le quedan (caja e inversiones de corto plazo / última pérdida operativa):
+5 o más años 10%, 2–5 años 20%, 1–2 años 35%, menos de 1 año 50%; 5% si el último año ya fue rentable. La meta,
+los años y p son supuestos editables, no proyecciones validadas. Las empresas cuyas pérdidas operativas superan
+sus ingresos se siguen rechazando (etapa de desarrollo). La volatilidad que escala las bandas de escenario tiene
+un tope (crecimiento 0,45, margen 0,15), por encima de toda empresa del Top 25, para que las historias erráticas
+de empresas pequeñas no produzcan escenarios optimistas sin sentido. Ninguna de las 22 empresas valoradas del
+Top 25 cambia.
+
 **Calibración.** Los pesos de convergencia se estiman en un panel de 2.578 empresas no financieras de NYSE y
 Nasdaq, regresando la desviación futura respecto del ancla sobre la desviación de hoy, de 1 a 5 años adelante.
 Las estimaciones por tamaño de ingresos se ajustan hacia el valor de todas las empresas (agrupación parcial con
@@ -175,12 +189,13 @@ la mediana histórica y menos de la mitad que el de extrapolar el crecimiento ac
 
 ### 7.4 Cobertura más allá del Top 25
 
-El dashboard está probado a fondo con su lista Top 25 (22 valoradas; JPMorgan, Bank of America y Berkshire
-Hathaway quedan fuera de alcance). `validation/universe_coverage.py` toma empresas al azar de NYSE y Nasdaq,
-una acción por empresa, y repite los mismos pasos que el dashboard. Con 60 empresas no financieras: **22
-valoradas (37%)**; 18 rechazadas por ser emisores extranjeros, 11 por pérdidas, 4 por datos de depreciación
-inutilizables, 3 sin ingresos todavía, 2 con menos de tres años de historia; **cero errores inesperados**. Entre
-las empresas rentables de EE. UU. que presentan el 10-K, se valora el 71%.
+El dashboard está probado a fondo con su lista Top 25 (22 con el modelo FCFF; JPMorgan y Bank of America con el
+motor bancario; Berkshire Hathaway, registrada como aseguradora, queda fuera de alcance). `validation/universe_coverage.py` toma empresas al azar de NYSE y Nasdaq,
+una acción por empresa, y repite los mismos pasos que el dashboard. Con 60 empresas no financieras: **30
+valoradas (50%)**, frente a 22 antes del camino a la rentabilidad; 18 rechazadas por ser emisores extranjeros,
+3 por estar en etapa de desarrollo, 4 por datos de depreciación inutilizables, 3 sin ingresos todavía, 2 con
+menos de tres años de historia; **cero errores inesperados**. Entre las empresas de EE. UU. que presentan el 10-K,
+se valora el 71%.
 
 ## 8. Caso de estudio: Microsoft
 
@@ -270,9 +285,10 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
 
 ## 10. Limitaciones y trabajo futuro
 
-- **Alcance.** Empresas no financieras que presentan el Form 10-K bajo US GAAP. Bancos y aseguradoras necesitan
-  modelos basados en el patrimonio; los emisores extranjeros (20-F) y las empresas con pérdidas se rechazan por
-  ahora.
+- **Alcance.** Empresas no financieras que presentan el Form 10-K bajo US GAAP. Los bancos usan su propio motor
+  basado en el patrimonio; las aseguradoras, los emisores extranjeros (20-F) y las empresas en etapa de desarrollo
+  se rechazan por ahora. Las empresas con pérdidas se valoran con un camino supuesto a la rentabilidad, que no
+  está validado fuera de muestra.
 - **Lo que no está validado.** Las trayectorias de CapEx, D&A y capital de trabajo son consistentes por
   construcción pero no se evaluaron como proyecciones; los años 6 a 10, el valor terminal y la valoración final
   no están validados.
@@ -280,15 +296,17 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
   cuya economía cambió para siempre. Se muestra en el Resumen y se puede editar.
 - **Una industria por empresa.** Un solo código SIC le da a las empresas con varios segmentos una sola beta (un
   minorista con una división de nube); el usuario puede elegir otra industria.
-- **Inconsistencia conocida.** Los pesos del WACC usan la deuda financiera del balance, mientras que el puente al
-  patrimonio también resta los arrendamientos financieros (en Microsoft, $40,3 mil millones vs $106,9 mil
-  millones). El efecto en el WACC es pequeño en este caso (peso de la deuda de alrededor de 1%) y es la próxima
-  corrección.
+- **Consistencia de arrendamientos (corregido, noviembre 2026).** Los pesos del WACC usaban la deuda financiera
+  del balance, mientras que el puente al patrimonio también restaba los arrendamientos financieros (en Microsoft,
+  $40,3 mil millones vs $106,9 mil millones). Ahora ambos usan la misma deuda auditada, con arrendamientos
+  financieros, y la beta de industria se reapalanca con ella. Efecto: WACC de Microsoft 10,33% → 10,29%, valor
+  por acción +$0,94; Amazon +$0,06. El ejemplo resuelto de la sección 8.2 es anterior a esta corrección (peso de
+  la deuda de 1,0%).
 - **Datos de mercado** de Yahoo Finance, que pueden no estar disponibles o tener límites de uso.
 
-**Próximos pasos:** soporte para emisores 20-F y empresas con pérdidas (con un camino explícito a la
-rentabilidad), un motor basado en el patrimonio para empresas financieras, betas ponderadas por segmento y un
-tratamiento consistente de los arrendamientos en el WACC.
+**Próximos pasos:** soporte para emisores 20-F, una prueba fuera de muestra del camino a la rentabilidad,
+extender el motor bancario basado en el patrimonio (activo para JPMorgan y Bank of America) a las
+aseguradoras, y betas ponderadas por segmento.
 
 ## 11. Reproducibilidad
 

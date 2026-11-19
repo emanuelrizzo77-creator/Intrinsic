@@ -28,7 +28,7 @@ Three design choices distinguish it from a typical student DCF:
    companies the model had never seen, forecasting from 2019 onward. All five criteria passed. Ideas that lost
    out of sample were rejected and are documented.
 3. **It refuses rather than guesses.** Missing statements block a valuation instead of being filled with zeros;
-   banks, insurers, REITs, foreign filers and loss-making companies are refused with the reason shown.
+   insurers, REITs, foreign filers and development-stage companies are refused with the reason shown.
 
 ## 2. Problem
 
@@ -106,6 +106,19 @@ Each driver follows the same rule — start at the latest observation, converge 
 | Tax | effective rate → 25% marginal by year 10 | 21% federal + ~4% state |
 | Terminal value | NOPAT<sub>H+1</sub> · (1 − g / RONIC) / (WACC − g) | reinvestment consistent with growth |
 
+**Loss-making companies (November 2026).** When the company's own nine-year median margin is not positive, or
+the fade still leaves an operating loss in year 10, the median cannot be the anchor: it would forecast losses
+forever. The margin instead moves in a straight line from today's level to the company's **industry** operating
+margin (Damodaran, January 2026, same SIC crosswalk as the beta; US market without financials when the industry is
+small or loses money) in 7 years, and the value is weighted by a probability of failure:
+value = (1 − p) · going-concern value + p · net cash (floored at zero). The default p comes from the cash runway
+(cash and short-term investments / latest operating loss): 5 or more years 10%, 2–5 years 20%, 1–2 years 35%,
+under 1 year 50%; 5% if the latest year is already profitable. Target, years and p are editable assumptions,
+not validated forecasts. Companies whose operating losses exceed their revenue are still refused (development
+stage). The volatility that scales the scenario bands is capped (growth 0.45, margin 0.15), above every Top 25
+company, so erratic small-company histories do not produce meaningless optimistic cases. None of the 22 valued
+Top 25 companies is affected.
+
 **Calibration.** The fade weights are estimated on a panel of 2,578 NYSE/Nasdaq non-financial companies by
 regressing the future deviation from the anchor on today's deviation, h = 1…5 years ahead. Estimates by revenue
 size bucket are shrunk toward the all-company value (partial pooling with 200 pseudo-observations). Current
@@ -170,11 +183,12 @@ median and less than half that of extrapolating today's growth.
 
 ### 7.4 Coverage beyond the Top 25
 
-The dashboard is fully tested on its Top 25 list (22 valued; JPMorgan, Bank of America and Berkshire Hathaway
-are routed out of scope). `validation/universe_coverage.py` samples random NYSE/Nasdaq companies, one listing
-per company, and runs the same steps as the dashboard. On 60 non-financial companies: **22 valued (37%)**; 18
-refused as foreign filers, 11 as loss-making, 4 for unusable depreciation data, 3 with no revenue yet, 2 with
-under three years of history; **zero unexpected errors**. Among profitable US 10-K filers, 71% are valued.
+The dashboard is fully tested on its Top 25 list (22 with the FCFF model; JPMorgan and Bank of America with
+the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). `validation/universe_coverage.py` samples random NYSE/Nasdaq companies, one listing
+per company, and runs the same steps as the dashboard. On 60 non-financial companies: **30 valued (50%)**, up
+from 22 before the path to profitability; 18 refused as foreign filers, 3 as development stage, 4 for unusable
+depreciation data, 3 with no revenue yet, 2 with under three years of history; **zero unexpected errors**. Among
+US 10-K filers, 71% are valued.
 
 ## 8. Case study: Microsoft
 
@@ -263,21 +277,23 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
 
 ## 10. Limitations and future work
 
-- **Scope.** Non-financial companies filing Form 10-K under US GAAP. Banks and insurers need equity-based
-  models; foreign private issuers (20-F) and loss-making companies are refused today.
+- **Scope.** Non-financial companies filing Form 10-K under US GAAP. Banks use their own equity engine;
+  insurers, foreign private issuers (20-F) and development-stage companies are refused today. Loss-making
+  companies are valued on an assumed path to profitability, which is not validated out of sample.
 - **What is not validated.** CapEx, D&A and working-capital paths are consistent by construction but were not
   scored as forecasts; years 6–10, the terminal value and the final valuation are not validated.
 - **Margin anchor.** The nine-year median won out of sample on average but undervalues a company whose economics
   changed for good. It is stated on the Overview page and editable.
 - **One industry per company.** A single SIC code gives multi-segment firms one beta (a retailer with a cloud
   division); the user can choose another industry.
-- **Known inconsistency.** The WACC weights use balance-sheet borrowings, while the equity bridge also deducts
-  finance leases (for Microsoft, $40.3 B vs $106.9 B). The effect on WACC is small here (debt weight about 1%) and
-  is the next fix.
+- **Lease consistency (fixed, November 2026).** The WACC weights used balance-sheet borrowings while the equity
+  bridge also deducted finance leases (for Microsoft, $40.3 B vs $106.9 B). Both now use the same audited debt,
+  finance leases included, and the industry beta is relevered with it. Effect: Microsoft's WACC 10.33% → 10.29%,
+  value per share +$0.94; Amazon +$0.06. The worked example in section 8.2 predates this fix (1.0% debt weight).
 - **Market data** comes from Yahoo Finance and can be unavailable or rate-limited.
 
-**Next steps:** support for 20-F filers and loss-making companies (explicit path to profitability), an
-equity-based engine for financial companies, segment-weighted betas, and consistent lease treatment in the WACC.
+**Next steps:** support for 20-F filers, an out-of-sample test of the path to profitability, extending
+the equity-based bank engine (live for JPMorgan and Bank of America) to insurers, and segment-weighted betas.
 
 ## 11. Reproducibility
 

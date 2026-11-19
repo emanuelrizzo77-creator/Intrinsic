@@ -53,6 +53,7 @@ SEC EDGAR (CompanyFacts, submissions)            Yahoo Finance            Damoda
 |---|---|---|
 | Revenue growth | `g_t = g_T + (g_0 − g_T)·φ^t` | `g_0` latest year; `φ` estimated on a panel of 2,578 companies by size bucket |
 | Operating margin | `m_t = m* + (m_0 − m*)·ψ^t` | `m*` = median of the company's prior 9 years; `ψ` panel-estimated |
+| Loss-making companies | straight line from `m_0` to the **industry** margin in 7 years; value = (1 − p)·going concern + p·net cash | own median implies losses forever; industry margin from Damodaran (Jan 2026); `p` from cash runway (5–50%), editable |
 | Fixed assets | `NetPPE_t = k_t · Revenue_t` | company history, panel-estimated convergence |
 | Depreciation | `δ · NetPPE_{t−1}` | company depreciation rate |
 | CapEx | `ΔNetPPE + depreciation` | follows from the two lines above |
@@ -107,24 +108,25 @@ final valuation itself.
 
 ## Coverage beyond the Top 25 (universal engine, beta)
 
-The dashboard is fully tested on the Top 25 list (22 valued; JPMorgan, Bank of America and Berkshire Hathaway
-are financial companies and out of scope). For any other SEC filer, `validation/universe_coverage.py` draws a
+The dashboard is fully tested on the Top 25 list (22 with the FCFF model; JPMorgan and Bank of America
+with the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). For any other SEC filer, `validation/universe_coverage.py` draws a
 fixed random sample of NYSE/Nasdaq companies (one listing per company) and runs the same steps as the dashboard.
 Latest run, 60 non-financial companies (seed 2026):
 
 | Outcome | Companies |
 |---|---:|
-| **Valued** | **22 (37%)** |
+| **Valued** | **30 (50%)** |
 | Refused: foreign private issuer (Form 20-F / IFRS) | 18 |
-| Refused: loss-making, no positive terminal operating profit | 11 |
+| Refused: development stage (operating losses larger than revenue) | 3 |
 | Refused: reported depreciation unusable for the PP&E roll-forward | 4 |
 | Refused: no revenue yet / first revenue year | 3 |
 | Refused: fewer than 3 years of history | 2 |
 | Unexpected errors | **0** |
 
-Among US companies filing a 10-K, 52% are valued; among those that are also profitable, 71%. Every refusal
-shows its reason in the dashboard instead of a number. Supporting 20-F filers and loss-making companies are the
-next steps for the universal engine.
+Among US companies filing a 10-K, 71% are valued (30 of 42). Loss-making companies with real revenue are valued on
+an explicit path to their industry's margin, weighted by a probability of failure (8 of the 11 previously refused);
+companies losing more than their revenue are still refused. Every refusal shows its reason in the dashboard instead
+of a number. Supporting 20-F filers is the next step for the universal engine.
 
 ## Limitations
 

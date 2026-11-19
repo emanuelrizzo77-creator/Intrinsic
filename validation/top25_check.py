@@ -53,7 +53,7 @@ def check(ticker, wacc, g):
         prices = {}
         for s in ('conservative', 'base', 'optimistic'):
             out = dm.run(data['history'], wacc=wacc, terminal_growth=g, net_debt=br['net_debt'], shares=br['shares'],
-                         scenario=s, rd_life=data['rd_life'], rd_life_note=data['rd_note'])
+                         scenario=s, rd_life=data['rd_life'], rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
             if s == 'base':
                 a = out['assumptions']
                 row.update(status=out['status'], blockers=' | '.join(a['blockers']),

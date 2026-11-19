@@ -128,8 +128,9 @@ def load_inputs(ticker, last_n=10):
         bridge['shares_source'] = f'diluted weighted average, FY {ends[-1]}'
     else:
         bridge['shares_source'] = 'BASIC cover-page snapshot (no diluted count for latest FY)'
+    from intrinsic.industry_margin import industry_margin_for_sic
     return {'cik': cik, 'name': name, 'sic': sic, 'decision': decision, 'history': history,
-            'rd_life': rd_life, 'rd_note': rd_note,
+            'rd_life': rd_life, 'rd_note': rd_note, 'industry_margin': industry_margin_for_sic(sic),
             'bridge': bridge, 'capital_flags': cap.get('flags', []) + debt_flags}
 
 
@@ -264,7 +265,7 @@ def main():
         out = dm.run(data['history'], wacc=args.wacc, terminal_growth=args.g, net_debt=br['net_debt'],
                      shares=shares, scenario=s, horizon=args.horizon, overrides=overrides,
                      mid_year=args.mid_year, rd_life=None if args.no_rd else data['rd_life'],
-                     rd_life_note=data['rd_note'])
+                     rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
         results[s] = out
         a = out['assumptions']
         print(f"\n=== {s.upper()} · status {out['status']} · validated={out['validated']} ===")

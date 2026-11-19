@@ -11,6 +11,9 @@ long-run anchor, convergence speed), every value labelled with its SOURCE:
 Mechanics (horizon H, default 10 years, then a value-driver terminal value):
   growth_t   = g_T + (g0 - g_T) * phi^t                 -> converges to terminal g
   margin_t   = m* + (m0 - m*) * psi^t
+               loss-making companies (own anchor m* <= 0, or still losing money in year H): an explicit
+               linear path from m0 to the INDUSTRY margin in N years, and
+               value = (1 - p) * going-concern value + p * distress value (net cash, floored at 0)
   tax_t      = linear from effective to marginal rate by year H
   NetPPE_t   = k_t * Revenue_t, k_t = k* + (k0 - k*) * psi_k^t   (capital intensity)
   Dep_t      = delta * NetPPE_{t-1}                     (PP&E roll-forward)
@@ -45,6 +48,33 @@ MARGINAL_TAX = 0.25            # 21% federal + ~4% state; editable assumption
 AMORT_RUNOFF_YEARS = 5         # organic forecast: existing acquired intangibles run off
 POOLING_K = 200               # pseudo-observations of the all-company estimate (hyperparameter)
 SIZE_BUCKETS = ((1e9, '<1B'), (1e10, '1-10B'), (1e11, '10-100B'), (float('inf'), '>100B'))
+
+# Loss-making companies: explicit path to profitability (economic assumptions, editable, not estimated).
+PROFIT_PATH_YEARS = 7          # years to reach the target margin; leaves 3 stable years before the terminal value
+DEVELOPMENT_STAGE_MARGIN = -1.0   # operating losses larger than revenue: not valued with a revenue-based DCF
+# Probability of failure by cash runway (cash + short-term investments / operating loss). Rule of thumb.
+FAILURE_BY_RUNWAY = ((5.0, 0.10), (2.0, 0.20), (1.0, 0.35), (0.0, 0.50))
+FAILURE_IF_PROFITABLE_NOW = 0.05
+# Caps on the company volatility that scales the scenario bands. Above the most volatile Top 25 company (NVIDIA:
+# growth 0.43, margin 0.15), so they bind only for erratic histories (e.g. a small firm whose revenue jumped 10x),
+# where an uncapped band produces meaningless optimistic values. Economic assumption, not estimated.
+SIGMA_CAPS = {'growth': 0.45, 'margin': 0.15}
+
+
+def failure_probability(last):
+    """(p, note) from the latest year's cash runway; editable assumption, not an estimate."""
+    ebit = last.get('EBIT')
+    cash = sum(x for x in (last.get('Cash'), last.get('Short-term investments')) if is_number(x))
+    if is_number(ebit) and ebit >= 0:
+        return FAILURE_IF_PROFITABLE_NOW, 'operating profit in the latest year; residual risk the recovery stalls'
+    if not is_number(ebit):
+        return FAILURE_BY_RUNWAY[1][1], 'operating result unavailable; mid-range default'
+    runway = cash / -ebit
+    for years, p in FAILURE_BY_RUNWAY:
+        if runway >= years:
+            return p, (f'cash + short-term investments cover {runway:.1f} years of the latest operating loss '
+                       f'(rule: >=5y 10%, 2-5y 20%, 1-2y 35%, <1y 50%)')
+    return FAILURE_BY_RUNWAY[-1][1], 'no cash runway'
 
 
 def size_bucket(revenue):
@@ -177,7 +207,7 @@ def historical_diagnostics(history):
 # ------------------------------------------------------------------
 
 def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
-                       calibration=None, overrides=None, rd_life=None, rd_life_note=''):
+                       calibration=None, overrides=None, rd_life=None, rd_life_note='', industry_margin=None):
     """Return {'drivers', 'status', 'blockers', 'degradations', 'diagnostics'}."""
     if scenario not in ('base', 'conservative', 'optimistic'):
         raise ValueError('scenario must be base, conservative or optimistic')
@@ -245,8 +275,9 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
     if not is_number(m0):
         blockers.append('Latest operating income (EBIT) not reported in SEC filings, and it could not be '
                         'derived from pretax income and interest')
-    elif m0 <= 0:
-        degraded.append('Negative latest EBIT margin: path to profitability relies on margin target')
+    elif m0 < DEVELOPMENT_STAGE_MARGIN:
+        blockers.append(f'Development-stage company: operating losses are {-m0:.1f}x revenue. A revenue-based DCF '
+                        'would be almost entirely assumption, so it is not valued.')
     # Anchor = median of years BEFORE the latest one, the same definition used to
     # calibrate the fade weight (validation/calibrate_fade.py); falls back to all years.
     prior = lambda xs: xs[:-1] if len(xs) >= 4 else xs
@@ -346,7 +377,8 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
         high_t = (cal.get('growth_fade_high') or {}).get('threshold', 0.25)
         group = 'high_growth' if (is_number(g0) and g0 > high_t and 'high_growth' in scaled) else 'all'
         k = 0 if scenario == 'conservative' else 1
-        sg, sm = max(floors['growth'], pstdev(gs)), max(floors['margin'], pstdev(ms))
+        sg = min(SIGMA_CAPS['growth'], max(floors['growth'], pstdev(gs)))
+        sm = min(SIGMA_CAPS['margin'], max(floors['margin'], pstdev(ms)))
         tbl = scaled[group]
         d['revenue_band'] = _drv([tbl[str(i)]['revenue_z'][k] * sg for i in range(1, 6)], 'calibrated',
                                  f'{scenario}: p{20 if k == 0 else 80} revenue error scaled by company growth '
@@ -380,6 +412,29 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
             mshift = (mq[0] if sign < 0 else mq[1]) if mq else sign * PROVISIONAL['scenario_margin_shift']
             d['margin_target'] = _drv(m_star + mshift, 'calibrated' if mq else 'assumption',
                                       f'{scenario}: margin target shifted {mshift:+.1%}')
+
+    # Loss-making companies: the company's own anchor implies losses forever (or it is still losing money
+    # after the horizon), so the long-run target becomes the industry margin, reached on an explicit path.
+    psi = d['margin_fade']['value']
+    still_losing = (is_number(m0) and is_number(m_star) and m_star + (m0 - m_star) * psi ** 10 <= 0)
+    if is_number(m0) and is_number(m_star) and m0 >= DEVELOPMENT_STAGE_MARGIN and (m_star <= 0 or still_losing):
+        if not industry_margin or not is_number(industry_margin.get('margin')):
+            blockers.append('Loss-making company and no industry margin available for a path to profitability')
+        else:
+            shift = d['margin_target']['value'] - m_star if is_number(d['margin_target']['value']) else 0.0
+            target = industry_margin['margin'] + shift
+            why = (f'company median {m_star:.1%} implies permanent losses' if m_star <= 0 else
+                   f'company median {m_star:.1%} still leaves an operating loss after 10 years')
+            d['margin_target'] = _drv(target, 'assumption',
+                                      f'PATH TO PROFITABILITY: {industry_margin["note"]}'
+                                      + (f'; {scenario} shift {shift:+.1%}' if shift else '') + f'; {why}')
+            d['profit_years'] = _drv(PROFIT_PATH_YEARS, 'assumption',
+                                     'years to reach the target margin on a straight line; held after that')
+            p_fail, p_note = failure_probability(last)
+            d['failure_prob'] = _drv(p_fail, 'assumption', f'probability the company fails before getting there: '
+                                     f'{p_note}. If it fails, shareholders get net cash (floored at zero)')
+            degraded.append('Loss-making company: valued on an explicit path to the industry margin, weighted by a '
+                            'probability of failure. Both are assumptions; see Forecast assumptions.')
 
     for key, val in (overrides or {}).items():
         if key not in d:
@@ -421,6 +476,8 @@ def project(assumptions, horizon=10):
     for name, x in (('growth_fade', phi), ('margin_fade', psi), ('intensity_fade', psik)):
         if not is_number(x) or not 0 <= x < 1:
             raise ValueError(f'{name} must be in [0, 1)')
+    if 'profit_years' in v and (not is_number(v['profit_years']) or not 1 <= v['profit_years'] <= horizon):
+        raise ValueError(f'profit_years must be between 1 and {horizon}')
     if not is_number(v['dep_rate']) or not 0 < v['dep_rate'] < 1:
         raise ValueError('dep_rate must be in (0, 1)')
 
@@ -434,7 +491,10 @@ def project(assumptions, horizon=10):
         g = gT + (g0 - gT) * phi ** t
         base_rev = base_rev * (1 + g)
         rev = base_rev
-        margin = mT + (m0 - mT) * psi ** t
+        if is_number(v.get('profit_years')) and v['profit_years'] > 0:
+            margin = m0 + (mT - m0) * min(t / v['profit_years'], 1.0)    # explicit path to profitability
+        else:
+            margin = mT + (m0 - mT) * psi ** t
         if 'revenue_band' in v:                     # scenario = base path shifted by horizon band
             hb = min(t, 5) - 1
             rev = base_rev * math.exp(v['revenue_band'][hb])
@@ -545,10 +605,20 @@ def value(projection, assumptions, *, net_debt, shares, mid_year=False):
     pv_tv = term['terminal_value'] / (1 + wacc) ** (projection['horizon'] - offset)
     ev = sum(pv) + pv_tv
     equity = ev - net_debt
-    return {'pv_fcff': sum(pv), 'pv_fcff_by_year': pv, 'terminal': term,
-            'pv_terminal': pv_tv, 'enterprise_value': ev, 'equity_value': equity,
-            'intrinsic_price': equity / shares,
-            'terminal_share_of_ev': pv_tv / ev if ev > 0 else None}
+    out = {'pv_fcff': sum(pv), 'pv_fcff_by_year': pv, 'terminal': term,
+           'pv_terminal': pv_tv, 'enterprise_value': ev, 'equity_value': equity,
+           'intrinsic_price': equity / shares,
+           'terminal_share_of_ev': pv_tv / ev if ev > 0 else None}
+    p = assumptions['drivers'].get('failure_prob', {}).get('value')
+    if is_number(p) and p > 0:
+        if not 0 <= p <= 1:
+            raise ValueError('failure_prob must be between 0 and 1')
+        distress = max(0.0, -net_debt)          # fire sale: operating assets worth nothing, net cash kept
+        out.update(failure_prob=p, going_concern_equity=equity, going_concern_price=equity / shares,
+                   distress_equity=distress, distress_price=distress / shares,
+                   equity_value=(1 - p) * equity + p * distress)
+        out['intrinsic_price'] = out['equity_value'] / shares
+    return out
 
 
 def consistency_checks(projection, assumptions, valuation=None):
@@ -591,12 +661,13 @@ def consistency_checks(projection, assumptions, valuation=None):
 
 
 def run(history, *, wacc, terminal_growth, net_debt, shares, scenario='base',
-        horizon=10, overrides=None, calibration='auto', mid_year=False, rd_life=None, rd_life_note=''):
+        horizon=10, overrides=None, calibration='auto', mid_year=False, rd_life=None, rd_life_note='',
+        industry_margin=None):
     """Full pipeline. Returns a dict even when BLOCKED (then without valuation)."""
     cal = load_calibration() if calibration == 'auto' else calibration
     a = derive_assumptions(history, wacc=wacc, terminal_growth=terminal_growth,
                            scenario=scenario, calibration=cal, overrides=overrides,
-                           rd_life=rd_life, rd_life_note=rd_life_note)
+                           rd_life=rd_life, rd_life_note=rd_life_note, industry_margin=industry_margin)
     out = {'assumptions': a, 'status': a['status'], 'validated': False}
     if a['status'] == 'BLOCKED':
         return out

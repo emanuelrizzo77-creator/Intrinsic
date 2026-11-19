@@ -172,6 +172,11 @@ def _sidebar_inputs(ticker, probe):
         ('tax_terminal', 'Long-run tax rate (%)', v.get('tax_terminal'),
          'Tax rate the company converges to by year 10 (US statutory 21% + ~4% state by default).'),
     )
+    path = 'profit_years' in d          # loss-making company on an explicit path to profitability
+    if path:
+        fields = tuple((k, l, dv, 'Target operating margin for this loss-making company: its industry\'s margin '
+                                  '(Damodaran, Jan 2026), because its own history implies losses forever.')
+                       if k == 'margin_target' else (k, l, dv, h) for k, l, dv, h in fields)
     for key, label, default, help_text in fields:
         if not is_number(default):
             continue
@@ -182,13 +187,29 @@ def _sidebar_inputs(ticker, probe):
                 overrides['growth_start'] = gT + (val - gT) / max(phi, 1e-6)
             else:
                 overrides[key] = val
+    if path:
+        years0 = int(v['profit_years'])
+        years = box.number_input(t('Years to reach the target margin'), min_value=1, max_value=10, value=years0, step=1,
+                                 help=t('The margin moves in a straight line from today to the target, then holds.'),
+                                 key=f'm27_in_{ticker}_profit_years')
+        if years != years0:
+            overrides['profit_years'] = int(years)
+        p0 = v['failure_prob']
+        p = box.number_input(t('Probability of failure (%)'), min_value=0.0, max_value=100.0,
+                             value=float(round(p0 * 100, 1)), step=5.0,
+                             help=t('Chance the company fails before becoming profitable. If it fails, shareholders get '
+                                    'its net cash (or nothing). Default from cash runway: 5 or more years of cash 10%, '
+                                    '2–5 years 20%, 1–2 years 35%, under 1 year 50%; 5% if already profitable.'),
+                             key=f'm27_in_{ticker}_failure_prob') / 100
+        if abs(p - round(p0, 3)) > 1e-6:
+            overrides['failure_prob'] = p
     return overrides
 
 
 def _run_all(data, wacc, g, overrides):
     br = data['bridge']
     return {s: dm.run(data['history'], wacc=wacc, terminal_growth=g, net_debt=br['net_debt'], shares=br['shares'],
-                      scenario=s, overrides=overrides or None, rd_life=data['rd_life'], rd_life_note=data['rd_note'])
+                      scenario=s, overrides=overrides or None, rd_life=data['rd_life'], rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
             for s in SCENARIOS}
 
 
@@ -242,6 +263,15 @@ def _company_strip(slot, ctx, data, market_price, market_shares, status):
 # Sections
 # ------------------------------------------------------------------
 
+def _not_valued_reason(res):
+    err = str(res.get('valuation_error', ''))
+    if 'Terminal NOPAT is not positive' in err or not err:
+        if 'profit_years' in res['assumptions']['drivers']:
+            return t('in this scenario the company never becomes profitable, so it would be worth only its net cash')
+        return t('no positive terminal operating profit')
+    return err
+
+
 def _overview(results, scen, wacc, market_price, market_shares, data, g=None, ctx=None):
     ctx = ctx or {}
     val = results[scen]['valuation']
@@ -274,7 +304,9 @@ def _overview(results, scen, wacc, market_price, market_shares, data, g=None, ct
     ui.md('<div class="ix-metrics">'
           + ui.metric(t('Enterprise value'), ui.usd_b(val['enterprise_value']), t('PV FCFF + PV terminal'), 'model',
                       _help('Enterprise value'))
-          + ui.metric(t('Equity value'), ui.usd_b(val['equity_value']), t('EV − net debt'), 'model', _help('Equity value'))
+          + ui.metric(t('Equity value'), ui.usd_b(val['equity_value']),
+                      t('probability-weighted') if 'failure_prob' in val else t('EV − net debt'), 'model',
+                      _help('Equity value'))
           + ui.metric(t('Net debt'), ui.usd_b(data['bridge']['net_debt']), t('SEC balance sheet'), '', _help('Net debt'))
           + ui.metric('WACC', ui.pct(wacc), t('manual override') if wacc_cls else t('sourced inputs · editable'), wacc_cls,
                       _help('WACC'))
@@ -288,8 +320,7 @@ def _overview(results, scen, wacc, market_price, market_shares, data, g=None, ct
     if missing:
         st.warning(t('Not valued: {scenarios} scenario — {reasons}.',
                      scenarios=', '.join(scenario(m) for m in missing),
-                     reasons='; '.join(str(results[m].get('valuation_error', t('no positive terminal operating profit')))
-                                       for m in missing)))
+                     reasons='; '.join(_not_valued_reason(results[m]) for m in missing)))
     lo, hi = prices['conservative'], prices['optimistic']
     if lo is None or hi is None:
         known = [p for p in prices.values() if p is not None]
@@ -322,6 +353,15 @@ def _overview(results, scen, wacc, market_price, market_shares, data, g=None, ct
                        + t('Change it under <em>Forecast assumptions</em> to test your own view.') + '</li>')
     else:
         margin_line = ''
+    if 'failure_prob' in val:
+        margin_line = ('<li>' + t('<strong>Loss-making company — path to profitability:</strong> its own history implies '
+                                  'losses forever, so the margin is assumed to rise in a straight line from {m0:.1%} to its '
+                                  'industry\'s {mT:.1%} in {n} years. This is an assumption, not a forecast the model has '
+                                  'validated.', m0=m0, mT=mT, n=int(drv['profit_years']['value'])) + '</li>'
+                       + '<li>' + t('<strong>Probability of failure {p:.0%}:</strong> value = {q:.0%} × {gc} if it gets '
+                                    'there + {p:.0%} × {ds} if it fails (shareholders keep only net cash).',
+                                    p=val['failure_prob'], q=1 - val['failure_prob'], gc=ui.usd(val['going_concern_price']),
+                                    ds=ui.usd(val['distress_price'])) + '</li>')
 
     left, right = st.columns([1.55, 1], gap='medium')
     with left:
@@ -526,7 +566,18 @@ def _valuation(results, scen, data):
             ('', [(t('PV of terminal value'), ''), (f"${v['pv_terminal'] / 1e9:,.2f} B", '')]),
             ('total', [(t('Enterprise value'), ''), (f"${v['enterprise_value'] / 1e9:,.2f} B", '')]),
             ('', [(t('Net debt (negative = net cash)'), ''), (f"${br['net_debt'] / 1e9:,.2f} B", '')]),
-            ('total', [(t('Equity value'), ''), (f"${v['equity_value'] / 1e9:,.2f} B", '')]),
+        ]
+        if 'failure_prob' in v:
+            p = v['failure_prob']
+            ledger += [
+                ('total', [(t('Equity value if it becomes profitable'), ''), (f"${v['going_concern_equity'] / 1e9:,.2f} B", '')]),
+                ('', [(t('Equity value if it fails (net cash, floored at 0)'), ''), (f"${v['distress_equity'] / 1e9:,.2f} B", '')]),
+                ('', [(t('Probability of failure'), ''), (f'{p:.0%}', '')]),
+                ('total', [(t('Probability-weighted equity value'), ''), (f"${v['equity_value'] / 1e9:,.2f} B", '')]),
+            ]
+        else:
+            ledger.append(('total', [(t('Equity value'), ''), (f"${v['equity_value'] / 1e9:,.2f} B", '')]))
+        ledger += [
             ('', [(t('Diluted shares'), ''), (f"{br['shares']:,.0f}", '')]),
             ('total key', [(t('Intrinsic value / share'), ''), (f"${v['intrinsic_price']:,.2f}", '')]),
         ]
@@ -556,9 +607,13 @@ def _valuation(results, scen, data):
     labels.append(t('Short-term investments')); values.append((br['short_term_investments'] or 0) / 1e9); measures.append('relative')
     for k, x in br.get('non_operating_assets', {}).items():
         labels.append(t(k)); values.append(x / 1e9); measures.append('relative')
-    labels.append(t('Equity Value')); values.append(v['equity_value'] / 1e9); measures.append('total')
+    labels.append(t('Equity Value')); values.append(v.get('going_concern_equity', v['equity_value']) / 1e9)
+    measures.append('total')
     _waterfall(labels, values, measures, 'From enterprise value to equity value',
                'Debt is deducted; cash, short-term and non-operating investments are added')
+    if 'failure_prob' in v:
+        st.caption(t('Equity value shown if the company becomes profitable; the valuation then weights it with the '
+                     'probability of failure (see Equity bridge).'))
 
 
 def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
@@ -576,7 +631,7 @@ def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
                 continue
             out = dm.run(data['history'], wacc=w, terminal_growth=gg, net_debt=br['net_debt'], shares=br['shares'],
                          scenario=scen, overrides=overrides or None, rd_life=data['rd_life'],
-                         rd_life_note=data['rd_note'])
+                         rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
             row.append(_price(out) if _price(out) is not None else float('nan'))
         matrix.append(row)
     text = [[(f'<b>${x:,.0f}</b><br>{(x / market_price - 1) * 100:+.0f}%' if not math.isnan(x) else 'N/A') for x in r]
@@ -621,7 +676,7 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
 
     def value_at(w):
         out = dm.run(data['history'], wacc=w, terminal_growth=g, net_debt=br['net_debt'], shares=br['shares'],
-                     scenario=scen, overrides=overrides or None, rd_life=data['rd_life'], rd_life_note=data['rd_note'])
+                     scenario=scen, overrides=overrides or None, rd_life=data['rd_life'], rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
         return _price(out)
 
     implied_w = _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at)
@@ -785,7 +840,7 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         return
     probe = dm.derive_assumptions(data['history'], wacc=wacc, terminal_growth=terminal_growth,
                                   calibration=dm.load_calibration(), rd_life=data['rd_life'],
-                                  rd_life_note=data['rd_note'])
+                                  rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
     if probe['status'] == 'BLOCKED':
         st.error(t('Valuation blocked — required SEC data is missing:'))
         for b in probe['blockers']:
@@ -810,8 +865,8 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         err = str(results[scen].get('valuation_error', 'Valuation not available for this scenario.'))
         if 'Terminal NOPAT is not positive' in err:
             err = t('In this scenario the forecast never reaches a positive operating profit, so there is no going-concern terminal '
-                    'value to discount. Intrinsic does not value loss-making companies yet; try another scenario if one is '
-                    'available, or adjust the long-run margin under Forecast assumptions.')
+                    'value to discount: the company would be worth only its net cash. Try another scenario, or adjust the '
+                    'long-run margin or the years to reach it under Forecast assumptions.')
         ui.state_card(t('Not valued in the {scen} scenario', scen=scenario(scen).lower()), escape(err))
         return
     status = results[scen]['status']
@@ -819,7 +874,8 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         st.warning(t('Some inputs are estimated or adjusted — see Model & Data for details.'))
     if overrides:
         names = {'growth_start': 'revenue growth', 'margin_target': 'long-run margin', 'intensity_target':
-                 'fixed assets per $ of revenue', 'nwc_ratio_target': 'working capital', 'tax_terminal': 'tax rate'}
+                 'fixed assets per $ of revenue', 'nwc_ratio_target': 'working capital', 'tax_terminal': 'tax rate',
+                 'profit_years': 'years to target margin', 'failure_prob': 'probability of failure'}
         ui.md('<div class="ix-quality">' + ui.tag(t('Your case'), 'user') + '<span>'
               + t('You are viewing YOUR case: <b>{fields}</b> changed from model values. Use "Reset to model values" in the '
                   'sidebar to go back.', fields=escape(', '.join(t(names.get(k, k)) for k in overrides)))

@@ -60,14 +60,14 @@ ES = {
     "You are searching the full SEC universe. Intrinsic's model is fully tested on the <b>25 largest US "
     "companies</b>; extending it to every company that files with the SEC is still in progress. Some companies "
     "will be refused, show incomplete data or need manual inputs while that work continues &mdash; thank you for "
-    "your patience. In a random test of 60 non-financial SEC companies, about 1 in 3 can be valued today; the rest "
-    "are refused with the reason shown (foreign filers, loss-making companies, missing data).":
+    "your patience. In a random test of 60 non-financial SEC companies, half can be valued today; the rest are "
+    "refused with the reason shown (foreign filers, development-stage companies, missing data).":
         'Estás buscando en todo el universo de la SEC. El modelo de Intrinsic está probado a fondo con las '
         '<b>25 empresas más grandes de EE. UU.</b>; extenderlo a todas las empresas que reportan a la SEC sigue en '
         'desarrollo. Algunas empresas serán rechazadas, mostrarán datos incompletos o necesitarán datos manuales '
         'mientras avanza ese trabajo &mdash; gracias por tu paciencia. En una prueba aleatoria con 60 empresas no '
-        'financieras de la SEC, hoy se puede valorar aproximadamente 1 de cada 3; las demás se rechazan mostrando '
-        'el motivo (emisores extranjeros, empresas con pérdidas, datos faltantes).',
+        'financieras de la SEC, hoy se puede valorar la mitad; las demás se rechazan mostrando el motivo (emisores '
+        'extranjeros, empresas en etapa de desarrollo, datos faltantes).',
     'Intrinsic is a portfolio project by a recent graduate, built to demonstrate financial modelling and data '
     'engineering. It is not a professional investment tool, and nothing here is investment advice.':
         'Intrinsic es un proyecto de portafolio de un recién graduado, creado para demostrar modelación financiera '
@@ -247,6 +247,50 @@ ES = {
     'Sensitivity': 'Sensibilidad',
     'Model & Data': 'Modelo y datos',
     'Risk & return': 'Riesgo y rendimiento',
+    # ---- loss-making companies: path to profitability
+    "<strong>Loss-making company — path to profitability:</strong> its own history implies losses forever, so the "
+    "margin is assumed to rise in a straight line from {m0:.1%} to its industry's {mT:.1%} in {n} years. This is an "
+    "assumption, not a forecast the model has validated.":
+        '<strong>Empresa con pérdidas — camino a la rentabilidad:</strong> su propia historia implica pérdidas para '
+        'siempre, así que se supone que el margen sube en línea recta de {m0:.1%} al {mT:.1%} de su industria en {n} '
+        'años. Es un supuesto, no una proyección que el modelo haya validado.',
+    '<strong>Probability of failure {p:.0%}:</strong> value = {q:.0%} × {gc} if it gets there + {p:.0%} × {ds} if it '
+    'fails (shareholders keep only net cash).':
+        '<strong>Probabilidad de quiebra {p:.0%}:</strong> valor = {q:.0%} × {gc} si lo logra + {p:.0%} × {ds} si '
+        'quiebra (los accionistas conservan solo la caja neta).',
+    'Chance the company fails before becoming profitable. If it fails, shareholders get its net cash (or nothing). '
+    'Default from cash runway: 5 or more years of cash 10%, 2–5 years 20%, 1–2 years 35%, under 1 year 50%; 5% if '
+    'already profitable.':
+        'Probabilidad de que la empresa quiebre antes de ser rentable. Si quiebra, los accionistas reciben su caja neta '
+        '(o nada). Valor por defecto según cuántos años de caja le quedan: 5 o más años 10%, 2–5 años 20%, 1–2 años '
+        '35%, menos de 1 año 50%; 5% si ya es rentable.',
+    'Equity value if it becomes profitable': 'Valor del patrimonio si se vuelve rentable',
+    'Equity value if it fails (net cash, floored at 0)': 'Valor del patrimonio si quiebra (caja neta, mínimo 0)',
+    'Equity value shown if the company becomes profitable; the valuation then weights it with the probability of '
+    'failure (see Equity bridge).':
+        'Valor del patrimonio si la empresa se vuelve rentable; luego la valoración lo pondera con la probabilidad de '
+        'quiebra (ver Puente al patrimonio).',
+    'In this scenario the forecast never reaches a positive operating profit, so there is no going-concern terminal '
+    'value to discount: the company would be worth only its net cash. Try another scenario, or adjust the long-run '
+    'margin or the years to reach it under Forecast assumptions.':
+        'En este escenario la proyección nunca llega a una utilidad operativa positiva, así que no hay valor terminal '
+        'de empresa en marcha que descontar: la empresa valdría solo su caja neta. Prueba otro escenario, o ajusta el '
+        'margen de largo plazo o los años para alcanzarlo en Supuestos de proyección.',
+    'Probability of failure': 'Probabilidad de quiebra',
+    'Probability of failure (%)': 'Probabilidad de quiebra (%)',
+    'Probability-weighted equity value': 'Valor del patrimonio ponderado por probabilidad',
+    "Target operating margin for this loss-making company: its industry's margin (Damodaran, Jan 2026), because its "
+    "own history implies losses forever.":
+        'Margen operativo meta para esta empresa con pérdidas: el margen de su industria (Damodaran, ene 2026), porque '
+        'su propia historia implica pérdidas para siempre.',
+    'The margin moves in a straight line from today to the target, then holds.':
+        'El margen avanza en línea recta desde hoy hasta la meta y luego se mantiene.',
+    'Years to reach the target margin': 'Años para alcanzar el margen meta',
+    'in this scenario the company never becomes profitable, so it would be worth only its net cash':
+        'en este escenario la empresa nunca se vuelve rentable, así que valdría solo su caja neta',
+    'probability-weighted': 'ponderado por probabilidad',
+    'years to target margin': 'años hasta el margen meta',
+    'probability of failure': 'probabilidad de quiebra',
     # ---- bank engine (excess return + dividend discount)
     'Bank · excess return + DDM': 'Banco · retorno en exceso + DDM',
     'Bank assumptions': 'Supuestos del banco',

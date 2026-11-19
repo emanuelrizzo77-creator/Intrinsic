@@ -79,8 +79,8 @@ def beta_notice():
 BETA_BODY = ("You are searching the full SEC universe. Intrinsic's model is fully tested on the <b>25 largest US "
              "companies</b>; extending it to every company that files with the SEC is still in progress. Some companies "
              "will be refused, show incomplete data or need manual inputs while that work continues &mdash; thank you for "
-             "your patience. In a random test of 60 non-financial SEC companies, about 1 in 3 can be valued today; the rest "
-             "are refused with the reason shown (foreign filers, loss-making companies, missing data).")
+             "your patience. In a random test of 60 non-financial SEC companies, half can be valued today; the rest are "
+             "refused with the reason shown (foreign filers, development-stage companies, missing data).")
 BETA_NOTE = ("Intrinsic is a portfolio project by a recent graduate, built to demonstrate financial modelling and data "
              "engineering. It is not a professional investment tool, and nothing here is investment advice.")
 
@@ -421,7 +421,7 @@ if wacc_mode == "Automatic Calculation":
     wacc_box.markdown(
         '<div class="ix-state">' + ui.kv_rows(
             [(t("Market capitalization"), f"${market_equity / 1e9:,.1f} B"),
-             (t("Total debt"), f"${total_debt / 1e9:,.1f} B"),
+             (t("Total debt (incl. finance leases)"), f"${total_debt / 1e9:,.1f} B"),
              (t("Cost of equity"), f"{(risk_free_rate + beta * equity_risk_premium) * 100:.2f}%")],
             total=(t("WACC"), f"{wacc * 100:.2f}%")) + '</div>',
         unsafe_allow_html=True,
