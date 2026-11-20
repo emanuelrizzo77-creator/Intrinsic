@@ -115,18 +115,25 @@ Latest run, 60 non-financial companies (seed 2026):
 
 | Outcome | Companies |
 |---|---:|
-| **Valued** | **30 (50%)** |
-| Refused: foreign private issuer (Form 20-F / IFRS) | 18 |
-| Refused: development stage (operating losses larger than revenue) | 3 |
-| Refused: reported depreciation unusable for the PP&E roll-forward | 4 |
+| **Valued** | **40 (67%)** |
+| Refused: development stage (operating losses larger than revenue) | 7 |
+| Refused: reported depreciation unusable for the PP&E roll-forward | 6 |
 | Refused: no revenue yet / first revenue year | 3 |
 | Refused: fewer than 3 years of history | 2 |
+| Refused: hyperinflationary reporting currency (IAS 29) | 1 |
+| Refused: no operating income tagged | 1 |
 | Unexpected errors | **0** |
 
-Among US companies filing a 10-K, 71% are valued (30 of 42). Loss-making companies with real revenue are valued on
-an explicit path to their industry's margin, weighted by a probability of failure (8 of the 11 previously refused);
-companies losing more than their revenue are still refused. Every refusal shows its reason in the dashboard instead
-of a number. Supporting 20-F filers is the next step for the universal engine.
+Loss-making companies with real revenue are valued on an explicit path to their industry's margin, weighted by a
+probability of failure; companies losing more than their revenue are still refused. Foreign private issuers (Form
+20-F / 40-F, US GAAP or IFRS, any non-hyperinflationary currency) are converted to US GAAP / USD at load time and
+valued per traded ADS (11 of the 18 in the sample). Every refusal shows its reason in the dashboard instead of a
+number.
+
+**Final verdict.** Each company also gets a Buy / Hold / Sell verdict: the conservative, base and optimistic
+scenarios (20th / 50th / 80th percentile of measured errors) define a distribution of value per share, and the
+verdict shows the probability that value is above or below the price by more than a margin of safety (15%,
+editable). It states what the model's numbers say, not investment advice.
 
 ## Limitations
 

@@ -28,7 +28,8 @@ Three design choices distinguish it from a typical student DCF:
    companies the model had never seen, forecasting from 2019 onward. All five criteria passed. Ideas that lost
    out of sample were rejected and are documented.
 3. **It refuses rather than guesses.** Missing statements block a valuation instead of being filled with zeros;
-   insurers, REITs, foreign filers and development-stage companies are refused with the reason shown.
+   insurers, REITs, hyperinflationary-currency filers and development-stage companies are refused with the
+   reason shown.
 
 ## 2. Problem
 
@@ -86,8 +87,17 @@ investments, all at the same balance-sheet date. Shares are the diluted weighted
 routed to an "outside the scope of this model" page *before* any market data is loaded, with an explanation of
 why a different model is needed.
 
+**Foreign private issuers (November 2026).** Companies filing Form 20-F or 40-F are adapted at load time so
+the engine reads them like a 10-K filer: the annual report is relabelled; IFRS concepts are mapped to their US GAAP
+equivalents (lease liabilities under IFRS 16 are treated as debt, consistent with operating profit before lease
+interest); amounts in another currency are converted to USD at Yahoo Finance rates, flows at the fiscal-year
+average and balances at the closing rate, and convenience translations are discarded so currencies never mix.
+Hyperinflationary currencies (IAS 29, e.g. ARS, TRY) are refused. Shares trade as ADSs: the ADS ratio is inferred
+from SEC ordinary shares vs the market count (whole-number match within 5%), otherwise the market count is used
+and flagged. US 10-K filers are untouched.
+
 **Refusal policy.** A valuation is blocked, with the reason shown, when revenue, operating income, fixed assets
-or the equity bridge cannot be verified; when the company files on Form 20-F/40-F or under IFRS; when it has
+or the equity bridge cannot be verified; when it reports in a hyperinflationary currency; when it has
 fewer than three years of history; or when the forecast never reaches a positive terminal operating profit.
 
 ## 5. Forecasting model
@@ -185,10 +195,12 @@ median and less than half that of extrapolating today's growth.
 
 The dashboard is fully tested on its Top 25 list (22 with the FCFF model; JPMorgan and Bank of America with
 the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). `validation/universe_coverage.py` samples random NYSE/Nasdaq companies, one listing
-per company, and runs the same steps as the dashboard. On 60 non-financial companies: **30 valued (50%)**, up
-from 22 before the path to profitability; 18 refused as foreign filers, 3 as development stage, 4 for unusable
-depreciation data, 3 with no revenue yet, 2 with under three years of history; **zero unexpected errors**. Among
-US 10-K filers, 71% are valued.
+per company, and runs the same steps as the dashboard. On 60 non-financial companies: **40 valued (67%)**, up
+from 22 (37%) before the path to profitability and the foreign-filer adapter; 7 refused as development stage, 6
+for unusable depreciation data, 3 with no revenue yet, 2 with under three years of history, 1 for a
+hyperinflationary currency and 1 with no operating income tagged; **zero unexpected errors**. Of the 18 foreign
+filers, 11 are now valued. (The coverage script also stopped counting companies without an SEC share count as
+valued before running the model; one such case was previously miscounted.)
 
 ## 8. Case study: Microsoft
 
@@ -261,6 +273,13 @@ the user can test their own view.
 
 - **Overview**: intrinsic value, market price and implied upside; the conservative-to-optimistic range against
   the market price; enterprise and equity value; a plain-language verdict and the single biggest assumption.
+- **Final verdict**: Buy / Hold / Sell. The three scenarios (20th, 50th and 80th percentile of the model's
+  measured errors) define a lognormal distribution of value per share; Buy is the probability the value exceeds
+  the price by more than a margin of safety (15% by default, editable), Sell the probability it falls short by
+  more than that margin, Hold the rest. Buy or Sell is shown only when it holds a majority of outcomes, otherwise
+  Hold; the split is drawn as a segmented bar and over the value distribution, with the reasons behind it. The
+  spread excludes discount-rate and terminal-growth uncertainty, so it understates real uncertainty. It states
+  what the model's numbers say, not investment advice.
 - **Forecast**: reported history and the three scenarios, a statement-style table (actuals vs estimates) and
   CSV export.
 - **Valuation**: the equity bridge, the build-up of value year by year and the bridge from enterprise to equity
@@ -278,7 +297,7 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
 ## 10. Limitations and future work
 
 - **Scope.** Non-financial companies filing Form 10-K under US GAAP. Banks use their own equity engine;
-  insurers, foreign private issuers (20-F) and development-stage companies are refused today. Loss-making
+  insurers, hyperinflationary-currency filers and development-stage companies are refused today. Loss-making
   companies are valued on an assumed path to profitability, which is not validated out of sample.
 - **What is not validated.** CapEx, D&A and working-capital paths are consistent by construction but were not
   scored as forecasts; years 6–10, the terminal value and the final valuation are not validated.
@@ -292,7 +311,7 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
   value per share +$0.94; Amazon +$0.06. The worked example in section 8.2 predates this fix (1.0% debt weight).
 - **Market data** comes from Yahoo Finance and can be unavailable or rate-limited.
 
-**Next steps:** support for 20-F filers, an out-of-sample test of the path to profitability, extending
+**Next steps:** an out-of-sample test of the path to profitability and of the final verdict's calibration, extending
 the equity-based bank engine (live for JPMorgan and Bank of America) to insurers, and segment-weighted betas.
 
 ## 11. Reproducibility

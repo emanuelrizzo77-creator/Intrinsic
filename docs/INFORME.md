@@ -28,8 +28,8 @@ Tres decisiones de diseño lo distinguen de un DCF típico de estudiante:
    con 800 empresas que el modelo nunca había visto, proyectando desde 2019. Cumplió los cinco. Las ideas que
    perdieron fuera de muestra se descartaron y quedaron documentadas.
 3. **Rechaza en lugar de adivinar.** Los estados financieros faltantes bloquean la valoración en vez de rellenarse
-   con ceros; aseguradoras, REIT, emisores extranjeros y empresas en etapa de desarrollo se rechazan mostrando el
-   motivo.
+   con ceros; aseguradoras, REIT, empresas que reportan en monedas hiperinflacionarias y empresas en etapa de
+   desarrollo se rechazan mostrando el motivo.
 
 ## 2. El problema
 
@@ -89,9 +89,19 @@ diluido del último año.
 cartera se envían a una página de "fuera del alcance de este modelo" *antes* de cargar datos de mercado, con una
 explicación de por qué necesitan otro modelo.
 
+**Emisores extranjeros (noviembre 2026).** Las empresas que presentan el Form 20-F o 40-F se adaptan al
+cargar los datos para que el motor las lea como si presentaran el 10-K: el informe anual se reetiqueta; los
+conceptos IFRS se traducen a sus equivalentes US GAAP (los pasivos por arrendamiento de IFRS 16 se tratan como
+deuda, en línea con una utilidad operativa antes de los intereses de arrendamiento); los montos en otra moneda se
+convierten a USD con tipos de cambio de Yahoo Finance, los flujos al promedio del año fiscal y los saldos al tipo
+de cierre, y se descartan las traducciones de conveniencia para no mezclar monedas. Las monedas
+hiperinflacionarias (NIC 29, p. ej. ARS, TRY) se rechazan. Las acciones cotizan como ADS: la equivalencia se
+deduce de las acciones ordinarias de la SEC frente al conteo de mercado (número entero con un margen de 5%); si
+no cuadra, se usa el conteo de mercado y se señala. Las empresas de EE. UU. con 10-K no cambian.
+
 **Política de rechazo.** Una valoración se bloquea, mostrando el motivo, cuando no se pueden verificar los
-ingresos, la utilidad operativa, el activo fijo o el puente al patrimonio; cuando la empresa presenta el Form
-20-F/40-F o reporta bajo IFRS; cuando tiene menos de tres años de historia; o cuando la proyección nunca alcanza
+ingresos, la utilidad operativa, el activo fijo o el puente al patrimonio; cuando la empresa reporta en una
+moneda hiperinflacionaria; cuando tiene menos de tres años de historia; o cuando la proyección nunca alcanza
 una utilidad operativa terminal positiva.
 
 ## 5. Modelo de proyección
@@ -191,11 +201,13 @@ la mediana histórica y menos de la mitad que el de extrapolar el crecimiento ac
 
 El dashboard está probado a fondo con su lista Top 25 (22 con el modelo FCFF; JPMorgan y Bank of America con el
 motor bancario; Berkshire Hathaway, registrada como aseguradora, queda fuera de alcance). `validation/universe_coverage.py` toma empresas al azar de NYSE y Nasdaq,
-una acción por empresa, y repite los mismos pasos que el dashboard. Con 60 empresas no financieras: **30
-valoradas (50%)**, frente a 22 antes del camino a la rentabilidad; 18 rechazadas por ser emisores extranjeros,
-3 por estar en etapa de desarrollo, 4 por datos de depreciación inutilizables, 3 sin ingresos todavía, 2 con
-menos de tres años de historia; **cero errores inesperados**. Entre las empresas de EE. UU. que presentan el 10-K,
-se valora el 71%.
+una acción por empresa, y repite los mismos pasos que el dashboard. Con 60 empresas no financieras: **40
+valoradas (67%)**, frente a 22 (37%) antes del camino a la rentabilidad y del adaptador de emisores extranjeros;
+7 rechazadas por estar en etapa de desarrollo, 6 por datos de depreciación inutilizables, 3 sin ingresos todavía,
+2 con menos de tres años de historia, 1 por moneda hiperinflacionaria y 1 sin utilidad operativa etiquetada;
+**cero errores inesperados**. De los 18 emisores extranjeros, hoy se valoran 11. (El script de cobertura también
+dejó de contar como valoradas a empresas sin conteo de acciones en la SEC antes de correr el modelo; un caso
+estaba mal contado.)
 
 ## 8. Caso de estudio: Microsoft
 
@@ -267,6 +279,14 @@ El dashboard muestra este supuesto en su primera página para que el usuario pru
 
 ![Resumen](figures/overview_es.jpg)
 
+- **Veredicto final**: Comprar / Mantener / Vender. Los tres escenarios (percentiles 20, 50 y 80 de los
+  errores medidos del modelo) definen una distribución lognormal del valor por acción; Comprar es la probabilidad
+  de que el valor supere el precio en más que un margen de seguridad (15% por defecto, editable), Vender la de que
+  quede por debajo en más que ese margen, y Mantener el resto. Comprar o Vender solo se muestran cuando reúnen la
+  mayoría de los resultados; si no, Mantener. La división se dibuja como barra segmentada y sobre la distribución
+  del valor, con las razones detrás. La dispersión no incluye la incertidumbre de la tasa de descuento ni del
+  crecimiento terminal, así que subestima la incertidumbre real. Dice lo que muestran los números del modelo, no
+  es asesoría de inversión.
 - **Resumen**: valor intrínseco, precio de mercado y potencial implícito; el rango de conservador a optimista
   frente al precio de mercado; valor de la empresa y del patrimonio; un veredicto en lenguaje simple y el
   supuesto más importante.
@@ -286,8 +306,8 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
 ## 10. Limitaciones y trabajo futuro
 
 - **Alcance.** Empresas no financieras que presentan el Form 10-K bajo US GAAP. Los bancos usan su propio motor
-  basado en el patrimonio; las aseguradoras, los emisores extranjeros (20-F) y las empresas en etapa de desarrollo
-  se rechazan por ahora. Las empresas con pérdidas se valoran con un camino supuesto a la rentabilidad, que no
+  basado en el patrimonio; las aseguradoras, las empresas con moneda hiperinflacionaria y las empresas en etapa
+  de desarrollo se rechazan por ahora. Las empresas con pérdidas se valoran con un camino supuesto a la rentabilidad, que no
   está validado fuera de muestra.
 - **Lo que no está validado.** Las trayectorias de CapEx, D&A y capital de trabajo son consistentes por
   construcción pero no se evaluaron como proyecciones; los años 6 a 10, el valor terminal y la valoración final
@@ -304,7 +324,7 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
   la deuda de 1,0%).
 - **Datos de mercado** de Yahoo Finance, que pueden no estar disponibles o tener límites de uso.
 
-**Próximos pasos:** soporte para emisores 20-F, una prueba fuera de muestra del camino a la rentabilidad,
+**Próximos pasos:** una prueba fuera de muestra del camino a la rentabilidad y de la calibración del veredicto final,
 extender el motor bancario basado en el patrimonio (activo para JPMorgan y Bank of America) a las
 aseguradoras, y betas ponderadas por segmento.
 

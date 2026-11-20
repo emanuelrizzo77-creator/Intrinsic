@@ -60,14 +60,14 @@ ES = {
     "You are searching the full SEC universe. Intrinsic's model is fully tested on the <b>25 largest US "
     "companies</b>; extending it to every company that files with the SEC is still in progress. Some companies "
     "will be refused, show incomplete data or need manual inputs while that work continues &mdash; thank you for "
-    "your patience. In a random test of 60 non-financial SEC companies, half can be valued today; the rest are "
-    "refused with the reason shown (foreign filers, development-stage companies, missing data).":
+    "your patience. In a random test of 60 non-financial SEC companies, about 2 in 3 can be valued today; the "
+    "rest are refused with the reason shown (development-stage companies, missing or unusable data).":
         'Estás buscando en todo el universo de la SEC. El modelo de Intrinsic está probado a fondo con las '
         '<b>25 empresas más grandes de EE. UU.</b>; extenderlo a todas las empresas que reportan a la SEC sigue en '
         'desarrollo. Algunas empresas serán rechazadas, mostrarán datos incompletos o necesitarán datos manuales '
         'mientras avanza ese trabajo &mdash; gracias por tu paciencia. En una prueba aleatoria con 60 empresas no '
-        'financieras de la SEC, hoy se puede valorar la mitad; las demás se rechazan mostrando el motivo (emisores '
-        'extranjeros, empresas en etapa de desarrollo, datos faltantes).',
+        'financieras de la SEC, hoy se pueden valorar aproximadamente 2 de cada 3; las demás se rechazan mostrando '
+        'el motivo (empresas en etapa de desarrollo, datos faltantes o inutilizables).',
     'Intrinsic is a portfolio project by a recent graduate, built to demonstrate financial modelling and data '
     'engineering. It is not a professional investment tool, and nothing here is investment advice.':
         'Intrinsic es un proyecto de portafolio de un recién graduado, creado para demostrar modelación financiera '
@@ -247,6 +247,91 @@ ES = {
     'Sensitivity': 'Sensibilidad',
     'Model & Data': 'Modelo y datos',
     'Risk & return': 'Riesgo y rendimiento',
+    # ---- final verdict
+    'Final verdict': 'Veredicto final',
+    "What the model's numbers say about buying, holding or selling at today's price":
+        'Lo que dicen los números del modelo sobre comprar, mantener o vender al precio de hoy',
+    'Margin of safety': 'Margen de seguridad',
+    'How far value and price must differ before the model says buy or sell. A wider margin makes Hold more likely.':
+        'Cuánto deben diferir el valor y el precio antes de que el modelo diga comprar o vender. Un margen más amplio '
+        'hace más probable Mantener.',
+    'No verdict': 'Sin veredicto',
+    'The valuation range is not available for this company, so the model cannot estimate how likely each outcome is.':
+        'El rango de valoración no está disponible para esta empresa, así que el modelo no puede estimar la '
+        'probabilidad de cada resultado.',
+    'The base scenario is not valued, so there is no verdict.':
+        'El escenario base no está valorado, así que no hay veredicto.',
+    'Model verdict': 'Veredicto del modelo',
+    'Buy': 'Comprar',
+    'Hold': 'Mantener',
+    'Sell': 'Vender',
+    '{p:.0%} of the model outcomes': '{p:.0%} de los resultados del modelo',
+    'What it means': 'Qué significa',
+    'The model values the stock above the market price by more than the margin of safety in most outcomes.':
+        'En la mayoría de los resultados, el modelo valora la acción por encima del precio de mercado en más que el '
+        'margen de seguridad.',
+    'The model values the stock below the market price by more than the margin of safety in most outcomes.':
+        'En la mayoría de los resultados, el modelo valora la acción por debajo del precio de mercado en más que el '
+        'margen de seguridad.',
+    'Neither buying nor selling holds a majority of the model outcomes: keep it if you own it, but there is no strong '
+    'reason to buy more or to sell.':
+        'Ni comprar ni vender reúne la mayoría de los resultados del modelo: mantenla si la tienes, pero no hay una '
+        'razón fuerte para comprar más ni para vender.',
+    'no side reaches 50% of the outcomes': 'ningún lado llega al 50% de los resultados',
+    'Probability of each verdict': 'Probabilidad de cada veredicto',
+    "Share of the model's value distribution in each zone":
+        'Parte de la distribución de valor del modelo que cae en cada zona',
+    'Where the probabilities come from': 'De dónde salen las probabilidades',
+    'Model value distribution from the conservative, base and optimistic scenarios, split at the market price ± the '
+    'margin of safety':
+        'Distribución de valor del modelo a partir de los escenarios conservador, base y optimista, dividida en el '
+        'precio de mercado ± el margen de seguridad',
+    'Market {p}': 'Mercado {p}',
+    'Base {p}': 'Base {p}',
+    'Intrinsic value per share (USD)': 'Valor intrínseco por acción (USD)',
+    'Likelihood': 'Probabilidad relativa',
+    'Buy if value is above': 'Comprar si el valor supera',
+    'Sell if value is below': 'Vender si el valor es menor que',
+    'Probability value is above the market price': 'Probabilidad de que el valor supere el precio de mercado',
+    'Why': 'Por qué',
+    "This is what the model's numbers say, not investment advice or a recommendation for your portfolio.":
+        'Esto es lo que dicen los números del modelo, no asesoría de inversión ni una recomendación para tu portafolio.',
+    "The spread comes from the model's conservative and optimistic scenarios; uncertainty in the discount rate and "
+    "terminal growth is not included, so real outcomes are wider.":
+        'La dispersión viene de los escenarios conservador y optimista del modelo; no incluye la incertidumbre de la '
+        'tasa de descuento ni del crecimiento terminal, así que los resultados reales son más amplios.',
+    'One scenario is not valued, so the spread is estimated from the other side and assumed symmetric.':
+        'Un escenario no está valorado, así que la dispersión se estima con el otro lado y se supone simétrica.',
+    '<strong>Value vs price:</strong> base value {v} against a market price of {p} ({u:+.0%}).':
+        '<strong>Valor vs precio:</strong> valor base {v} frente a un precio de mercado de {p} ({u:+.0%}).',
+    '<strong>Value vs price:</strong> base value {v} (midpoint of both models) against a market price of {p} ({u:+.0%}).':
+        '<strong>Valor vs precio:</strong> valor base {v} (punto medio de ambos modelos) frente a un precio de mercado '
+        'de {p} ({u:+.0%}).',
+    '<strong>Biggest assumption:</strong> operating margin from {m0:.1%} today to {mT:.1%} in the long run{path}.':
+        '<strong>Supuesto principal:</strong> margen operativo de {m0:.1%} hoy a {mT:.1%} en el largo plazo{path}.',
+    ' (path to its industry margin)': ' (camino al margen de su industria)',
+    '<strong>Long-term weight:</strong> {s:.0%} of the value comes from after year 10, so the verdict leans on '
+    'long-run assumptions.':
+        '<strong>Peso del largo plazo:</strong> {s:.0%} del valor viene de después del año 10, así que el veredicto '
+        'depende de supuestos de largo plazo.',
+    '<strong>Loss-making company:</strong> includes a {p:.0%} probability of failure.':
+        '<strong>Empresa con pérdidas:</strong> incluye una probabilidad de quiebra de {p:.0%}.',
+    "<strong>Risk and return:</strong> buying at today's price implies a {i:.1%} return against the {r:.1%} its risk "
+    "requires (alpha {a:+.1%}).":
+        '<strong>Riesgo y rendimiento:</strong> comprar al precio de hoy implica un rendimiento de {i:.1%} frente al '
+        '{r:.1%} que exige su riesgo (alfa {a:+.1%}).',
+    '<strong>Data quality:</strong> some inputs are estimated or adjusted (see Model &amp; Data); treat the verdict '
+    'with extra caution.':
+        '<strong>Calidad de datos:</strong> algunos datos son estimados o ajustados (ver Modelo y datos); toma el '
+        'veredicto con más cautela.',
+    '<strong>Foreign filer:</strong> figures converted to US GAAP / USD from its Form 20-F.':
+        '<strong>Emisor extranjero:</strong> cifras convertidas a US GAAP / USD desde su Form 20-F.',
+    '<strong>Price to book:</strong> the market pays {m:.2f}× book value; the model justifies {j:.2f}×.':
+        '<strong>Precio/valor contable:</strong> el mercado paga {m:.2f}× el valor contable; el modelo justifica {j:.2f}×.',
+    '<strong>Biggest assumption:</strong> long-run ROE of {r:.1%} against a {k:.1%} cost of equity.':
+        '<strong>Supuesto principal:</strong> ROE de largo plazo de {r:.1%} frente a un costo del patrimonio de {k:.1%}.',
+    '<strong>Model agreement:</strong> the dividend model is {g:+.0%} from the excess-return model.':
+        '<strong>Acuerdo entre modelos:</strong> el modelo de dividendos está a {g:+.0%} del de retorno en exceso.',
     # ---- loss-making companies: path to profitability
     "<strong>Loss-making company — path to profitability:</strong> its own history implies losses forever, so the "
     "margin is assumed to rise in a straight line from {m0:.1%} to its industry's {mT:.1%} in {n} years. This is an "

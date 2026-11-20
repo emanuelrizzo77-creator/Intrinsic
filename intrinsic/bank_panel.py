@@ -390,6 +390,28 @@ def _risk_return(data, scen, g, shares, overrides, price, capm):
                                      'price. The beta that would justify today\'s price is {bi:.2f}.', bi=b_implied))
 
 
+def _final_verdict(ticker, res, price, ke):
+    from intrinsic.verdict_panel import render_verdict
+    prices = {s: res[s].get('midpoint') for s in SCENARIOS}
+    b = res['base']
+    if b['status'] != 'OK':
+        ui.state_card(t('No verdict'), t('The base scenario is not valued, so there is no verdict.'))
+        return
+    d = b['assumptions']['drivers']
+    pb_mkt = price / b['book_value_per_share'] if b['book_value_per_share'] > 0 else None
+    reasons = [
+        t('<strong>Value vs price:</strong> base value {v} (midpoint of both models) against a market price of {p} '
+          '({u:+.0%}).', v=ui.usd(b['midpoint']), p=ui.usd(price), u=b['midpoint'] / price - 1),
+        t('<strong>Price to book:</strong> the market pays {m:.2f}× book value; the model justifies {j:.2f}×.',
+          m=pb_mkt or 0, j=b['justified_pb']),
+        t('<strong>Biggest assumption:</strong> long-run ROE of {r:.1%} against a {k:.1%} cost of equity.',
+          r=d['roe_long']['value'], k=ke),
+        t('<strong>Model agreement:</strong> the dividend model is {g:+.0%} from the excess-return model.',
+          g=b['model_gap'] or 0),
+    ]
+    render_verdict(prices, price, reasons, f'bank-{ticker}', _chart)
+
+
 def _model_data(res, scen, data):
     ui.heading(t('Model & data'), t('Where each assumption comes from, and the SEC history behind it'))
     ui.md(f'<div class="ix-state-card"><h4>{t("Not validated")}</h4>'
@@ -455,7 +477,7 @@ def render_bank(ticker, header_slot, rf_loader, erp_default, terminal_default):
     with nav:
         section = st.segmented_control(t('Dashboard section'),
                                        options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Risk & return',
-                                                'Model & Data'],
+                                                'Final verdict', 'Model & Data'],
                                        format_func=t, default='Overview', key='intrinsic_section_27',
                                        label_visibility='collapsed') or 'Overview'
     with pick:
@@ -475,6 +497,8 @@ def render_bank(ticker, header_slot, rf_loader, erp_default, terminal_default):
         _sensitivity(data, scen, ke, g, shares, overrides, price, ticker)
     elif section == 'Risk & return':
         _risk_return(data, scen, g, shares, overrides, price, capm)
+    elif section == 'Final verdict':
+        _final_verdict(ticker, res, price, ke)
     elif section == 'Model & Data':
         _model_data(res, scen, data)
     else:

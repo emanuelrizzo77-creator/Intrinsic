@@ -58,6 +58,11 @@ def load_inputs(ticker, last_n=10):
             raise DataUnavailable(f'{name}: the SEC has no XBRL financial statements for this registrant '
                                   '(typical of funds, trusts and very new listings).') from exc
         raise
+    from intrinsic.foreign_filers import ForeignFilerUnsupported, normalize_payload
+    try:
+        payload, foreign = normalize_payload(payload)     # 20-F / 40-F filers -> US GAAP, USD, annual report
+    except ForeignFilerUnsupported as exc:
+        raise DataUnavailable(str(exc)) from exc
     from intrinsic.sec_data import annual_flows
     hist = analyze_historical_23c(payload, last_n=last_n)
     if len(hist['rows']) < 3:
@@ -70,6 +75,10 @@ def load_inputs(ticker, last_n=10):
         if forms & {'20-F', '40-F'} and not forms & {'10-K', '10-K/A'}:
             raise DataUnavailable(f"{payload.get('entityName', name)} files its annual report on Form 20-F/40-F "
                                   '(foreign private issuer). Only companies filing Form 10-K are supported for now.')
+        if foreign and foreign['standard'] == 'IFRS':
+            raise DataUnavailable(f"{payload.get('entityName', name)} reports under IFRS, but fewer than 3 years of "
+                                  'revenue could be read from its SEC filings (some IFRS filers tag revenue with '
+                                  'company-specific concepts the engine cannot map).')
         raise DataUnavailable(f"{payload.get('entityName', name)} has fewer than 3 years of annual revenue in SEC "
                               'filings (new listing, SPAC or shell company). A DCF needs a history to start from.')
     # EBIT fallback when OperatingIncomeLoss is not reported (common in pharma):
@@ -131,7 +140,8 @@ def load_inputs(ticker, last_n=10):
     from intrinsic.industry_margin import industry_margin_for_sic
     return {'cik': cik, 'name': name, 'sic': sic, 'decision': decision, 'history': history,
             'rd_life': rd_life, 'rd_note': rd_note, 'industry_margin': industry_margin_for_sic(sic),
-            'bridge': bridge, 'capital_flags': cap.get('flags', []) + debt_flags}
+            'bridge': bridge, 'foreign': foreign,
+            'capital_flags': cap.get('flags', []) + debt_flags + ([foreign['note']] if foreign else [])}
 
 
 # Balance-sheet debt by component, used when no total-debt line is tagged. One tag per group

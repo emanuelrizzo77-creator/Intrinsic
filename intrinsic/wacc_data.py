@@ -149,10 +149,12 @@ def _historical_kd(datos_sec, balance):
 
 
 def obtener_datos_wacc(ticker="MSFT"):
-    from intrinsic.inputs import load_inputs
+    from intrinsic.foreign_filers import annual_payload
+    from intrinsic.inputs import load_inputs, lookup_cik
 
     mercado = obtener_mercado(ticker)
-    datos_sec = descargar_datos(ticker)
+    # Same normalized facts as the valuation (foreign filers converted to US GAAP / USD / annual report).
+    datos_sec, _ = annual_payload(lookup_cik(ticker)[0])
 
     if mercado.get("currency") != "USD":
         raise ValueError(

@@ -42,19 +42,20 @@ def check(ticker, wacc, g):
                shares_source=br.get('shares_source'), debt_source=br.get('debt_source'),
                fiscal_year_end=data['history'][-1]['Fiscal year end'] if data['history'] else None,
                years_of_history=len(data['history']), capital_flags=' | '.join(data['capital_flags']))
-    if br['net_debt'] is not None and not br['shares']:
-        row.update(result='NEEDS_MARKET_SHARES', detail='SEC reports shares only by class; the dashboard uses the '
-                   'market share count (flagged)')
-        return row
+    needs_market_shares = br['net_debt'] is not None and not br['shares']
     if br['net_debt'] is None:
         row.update(result='BLOCKED', detail='incomplete EV-to-equity bridge (debt, cash or short-term investments)')
         return row
     try:
         prices = {}
         for s in ('conservative', 'base', 'optimistic'):
-            out = dm.run(data['history'], wacc=wacc, terminal_growth=g, net_debt=br['net_debt'], shares=br['shares'],
+            # No SEC share count: run the model on a placeholder count so blockers are still checked (the dashboard
+            # uses the market count; per-share prices are then not meaningful here and are not reported).
+            out = dm.run(data['history'], wacc=wacc, terminal_growth=g, net_debt=br['net_debt'],
+                         shares=br['shares'] or 1.0,
                          scenario=s, rd_life=data['rd_life'], rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
             if s == 'base':
+                base_ok = 'valuation' in out
                 a = out['assumptions']
                 row.update(status=out['status'], blockers=' | '.join(a['blockers']),
                            degradations=' | '.join(a['degradations']), notes=' | '.join(a.get('notes', [])),
@@ -66,10 +67,17 @@ def check(ticker, wacc, g):
                                margin_target=round(d['margin_target'], 4) if d.get('margin_target') is not None else None,
                                ppe_leakage=d.get('ppe_leakage'), rd_capitalised='research_asset0' in d)
             prices[s] = round(out['valuation']['intrinsic_price'], 2) if 'valuation' in out else None
+        if needs_market_shares:
+            prices = {k: None for k in prices} if prices['base'] is not None else prices
+            ok = base_ok
+            row.update(result='NEEDS_MARKET_SHARES' if ok else 'BLOCKED',
+                       detail='SEC reports shares only by class; the dashboard uses the market share count (flagged)'
+                       if ok else None)
+        else:
+            row.update(result='OK' if prices['base'] is not None and row['status'] == 'DATA_COMPLETE'
+                       else ('DEGRADED' if prices['base'] is not None else 'BLOCKED'))
         row.update(price_conservative=prices['conservative'], price_base=prices['base'],
-                   price_optimistic=prices['optimistic'],
-                   result='OK' if prices['base'] is not None and row['status'] == 'DATA_COMPLETE'
-                   else ('DEGRADED' if prices['base'] is not None else 'BLOCKED'))
+                   price_optimistic=prices['optimistic'])
     except Exception as exc:
         row.update(result='ERROR_MODEL', detail=f'{type(exc).__name__}: {exc}', trace=traceback.format_exc(limit=3))
     return row

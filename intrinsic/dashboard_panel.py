@@ -740,6 +740,50 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
                                      'justify today\'s price is {bi:.2f}.', w=ui.pct(implied_w), bi=b_implied))
 
 
+def _final_verdict(ticker, results, data, market_price, g, overrides, ctx):
+    from intrinsic.verdict_panel import render_verdict
+    prices = {s: _price(results[s]) for s in SCENARIOS}
+    base = results['base']
+    reasons = []
+    if 'valuation' in base:
+        v, d = base['valuation'], base['assumptions']['drivers']
+        up = v['intrinsic_price'] / market_price - 1
+        reasons.append(t('<strong>Value vs price:</strong> base value {v} against a market price of {p} ({u:+.0%}).',
+                         v=ui.usd(v['intrinsic_price']), p=ui.usd(market_price), u=up))
+        m0, mT = d['margin_start']['value'], d['margin_target']['value']
+        if is_number(m0) and is_number(mT):
+            reasons.append(t('<strong>Biggest assumption:</strong> operating margin from {m0:.1%} today to {mT:.1%} in the '
+                             'long run{path}.', m0=m0, mT=mT,
+                             path=t(' (path to its industry margin)') if 'profit_years' in d else ''))
+        if v.get('terminal_share_of_ev') is not None:
+            reasons.append(t('<strong>Long-term weight:</strong> {s:.0%} of the value comes from after year 10, so the '
+                             'verdict leans on long-run assumptions.', s=v['terminal_share_of_ev']))
+        if 'failure_prob' in v:
+            reasons.append(t('<strong>Loss-making company:</strong> includes a {p:.0%} probability of failure.',
+                             p=v['failure_prob']))
+    capm = ctx.get('capm')
+    if capm and 'valuation' in base:
+        br = data['bridge']
+
+        def value_at(w):
+            out = dm.run(data['history'], wacc=w, terminal_growth=g, net_debt=br['net_debt'], shares=br['shares'],
+                         scenario='base', overrides=overrides or None, rd_life=data['rd_life'],
+                         rd_life_note=data['rd_note'], industry_margin=data.get('industry_margin'))
+            return _price(out)
+        iw = _implied_wacc(ticker, data, 'base', g, overrides, market_price, value_at)
+        if iw is not None:
+            ke = sml.implied_cost_of_equity(iw, capm['after_tax_cost_of_debt'], capm['equity_weight'], capm['debt_weight'])
+            req = sml.required_return(capm['risk_free_rate'], capm['beta'], capm['equity_risk_premium'])
+            reasons.append(t('<strong>Risk and return:</strong> buying at today\'s price implies a {i:.1%} return '
+                             'against the {r:.1%} its risk requires (alpha {a:+.1%}).', i=ke, r=req, a=ke - req))
+    if base.get('status') == 'DEGRADED':
+        reasons.append(t('<strong>Data quality:</strong> some inputs are estimated or adjusted (see Model &amp; Data); '
+                         'treat the verdict with extra caution.'))
+    if data.get('foreign'):
+        reasons.append(t('<strong>Foreign filer:</strong> figures converted to US GAAP / USD from its Form 20-F.'))
+    render_verdict(prices, market_price, reasons, ticker, _chart)
+
+
 def _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at):
     """Solve for the WACC that equates the DCF value to the market price (cached per inputs)."""
     br = data['bridge']
@@ -832,6 +876,17 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
                    reason=data['decision'].get('reason')))
         return
     br = data['bridge']
+    if data.get('foreign') and br['shares'] and market_shares:
+        # Foreign filers trade as ADSs: value per traded share = value per ordinary share x ordinary shares per ADS.
+        from intrinsic.foreign_filers import ads_ratio
+        n = ads_ratio(br['shares'], market_shares)
+        if n is None:
+            br['shares'] = float(market_shares)
+            br['shares_source'] = ('market data: SEC ordinary shares and traded shares do not reconcile to a whole '
+                                   'ADS ratio — per-share values use the market count; verify')
+        elif n != 1:
+            br['shares'] = br['shares'] / n
+            br['shares_source'] += f'; per traded ADS (1 ADS = {n:g} ordinary shares, from SEC vs market counts)'
     if not br['shares'] and market_shares:
         br['shares'] = float(market_shares)
         br['shares_source'] = 'market data (SEC reports shares by class only) — verify share class'
@@ -850,7 +905,7 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
     with nav:
         section = st.segmented_control(t('Dashboard section'),
                                        options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Risk & return',
-                                                'Model & Data'],
+                                                'Final verdict', 'Model & Data'],
                                        format_func=t, default='Overview', key='intrinsic_section_27',
                                        label_visibility='collapsed') or 'Overview'
     with pick:
@@ -888,6 +943,8 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         _sensitivity(data, scen, wacc, terminal_growth, overrides, market_price, ticker)
     elif section == 'Risk & return':
         _risk_return(ticker, scen, data, terminal_growth, overrides, market_price, ctx.get('capm'))
+    elif section == 'Final verdict':
+        _final_verdict(ticker, results, data, market_price, terminal_growth, overrides, ctx)
     elif section == 'Model & Data':
         _model_data(results, scen, data)
     else:

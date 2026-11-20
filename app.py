@@ -79,8 +79,8 @@ def beta_notice():
 BETA_BODY = ("You are searching the full SEC universe. Intrinsic's model is fully tested on the <b>25 largest US "
              "companies</b>; extending it to every company that files with the SEC is still in progress. Some companies "
              "will be refused, show incomplete data or need manual inputs while that work continues &mdash; thank you for "
-             "your patience. In a random test of 60 non-financial SEC companies, half can be valued today; the rest are "
-             "refused with the reason shown (foreign filers, development-stage companies, missing data).")
+             "your patience. In a random test of 60 non-financial SEC companies, about 2 in 3 can be valued today; the "
+             "rest are refused with the reason shown (development-stage companies, missing or unusable data).")
 BETA_NOTE = ("Intrinsic is a portfolio project by a recent graduate, built to demonstrate financial modelling and data "
              "engineering. It is not a professional investment tool, and nothing here is investment advice.")
 

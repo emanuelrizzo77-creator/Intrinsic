@@ -9,7 +9,8 @@ sys.path.insert(0, ROOT)
 
 from intrinsic.ui.i18n import ES, GLOSSARY_ES  # noqa: E402
 
-UI_FILES = ('app.py', 'intrinsic/dashboard_panel.py', 'intrinsic/bank_panel.py', 'intrinsic/ui/components.py')
+UI_FILES = ('app.py', 'intrinsic/dashboard_panel.py', 'intrinsic/bank_panel.py', 'intrinsic/verdict_panel.py',
+            'intrinsic/ui/components.py')
 
 
 def _const(node):
@@ -31,7 +32,7 @@ def translated_literals():
                     found |= {_const(a) for a in args[1:3] if _const(a)}
                 elif name == 'line' and args and _const(args[0]):
                     found.add(_const(args[0]))
-            if isinstance(node, ast.Assign) and any(isinstance(x, ast.Name) and x.id in ('fields', 'names', 'BETA_BODY', 'BETA_NOTE')
+            if isinstance(node, ast.Assign) and any(isinstance(x, ast.Name) and x.id in ('fields', 'names', 'BETA_BODY', 'BETA_NOTE', 'ACTION_MEANING', 'ACTION_LABEL')
                                                     for x in node.targets):
                 for sub in ast.walk(node.value):
                     s = _const(sub)
