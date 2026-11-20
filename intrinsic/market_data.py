@@ -38,22 +38,40 @@ BALANCE_TAGS = {
     "Operating Leases": ["OperatingLeaseLiability"],
 }
 
+def _info(tk):
+    """Yahoo quote summary; {} when Yahoo rate-limits or blocks the request (common from shared cloud hosts)."""
+    try:
+        return tk.info or {}
+    except Exception:
+        return {}
+
+
+def _fast(tk, attr):
+    try:
+        v = getattr(tk.fast_info, attr)
+        return v if v is not None and v == v else None      # drop NaN
+    except Exception:
+        return None
+
+
 def obtener_mercado(ticker):
     print(f"Consultando datos de mercado: {ticker}")
-    info = yf.Ticker(ticker).info
-    precio = info.get("currentPrice")
-    if precio is None:
-        precio = info.get("regularMarketPrice")
-    acciones = info.get("sharesOutstanding")
-    capitalizacion = info.get("marketCap")
+    tk = yf.Ticker(ticker)
+    info = _info(tk)
+    precio = info.get("currentPrice") or info.get("regularMarketPrice") or _fast(tk, "last_price")
+    acciones = info.get("sharesOutstanding") or _fast(tk, "shares")
+    capitalizacion = info.get("marketCap") or _fast(tk, "market_cap")
     if capitalizacion is None and precio is not None and acciones is not None:
         capitalizacion = precio * acciones
+    # Every company here is an SEC filer whose ordinary shares or ADSs trade in the US, so when Yahoo omits the
+    # currency the quote is in USD. A currency Yahoo DOES report is kept, so a non-USD listing is still refused.
+    moneda = info.get("currency") or _fast(tk, "currency") or "USD"
     return {
         "ticker": ticker, "company": info.get("longName"),
         "price": precio, "shares": acciones, "market_cap": capitalizacion,
-        "beta": info.get("beta"), "currency": info.get("currency"),
+        "beta": info.get("beta"), "currency": moneda,
         "retrieved_at": datetime.now(timezone.utc).isoformat(),
-        "source": "Yahoo Finance via yfinance",
+        "source": "Yahoo Finance via yfinance" + ("" if info else " (fast quote; full quote unavailable)"),
     }
 
 def _candidatos(conceptos, etiqueta, fecha=None):
