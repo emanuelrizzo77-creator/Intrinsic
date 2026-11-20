@@ -57,6 +57,14 @@ GLOSSARY = {
     'Scenario': 'Conservative and optimistic use the 20th / 80th percentile of the model\'s real out-of-sample '
                 'forecast errors for revenue and margin. Conservative also assumes competitive advantages fade '
                 '(new investments earn only WACC).',
+    'Conservative': 'What the stock is worth if things go worse than expected. Revenue and margin land at the 20th '
+                    'percentile of the model\'s past forecast errors (only 1 in 5 past forecasts came out worse), and '
+                    'after year 10 new investment earns only its cost of capital, so growth adds no value.',
+    'Base': 'The central case: the most likely path. Growth fades from its latest rate toward typical company growth '
+            'and then to the terminal rate; the margin moves toward the company\'s own long-run median.',
+    'Optimistic': 'What the stock is worth if things go better than expected. Revenue and margin land at the 80th '
+                  'percentile of the model\'s past forecast errors (only 1 in 5 past forecasts came out better). It is '
+                  'a good outcome, not the best possible one.',
     'Revenue growth': 'Expected annual change in sales. Model 27 starts from the latest year and slows toward '
                       'long-run growth at the speed observed across thousands of companies.',
     'EBIT': 'Earnings before interest and taxes: operating profit.',
@@ -297,7 +305,7 @@ def _overview(results, scen, wacc, market_price, market_shares, data, g=None, ct
           <div class="ix-big-sub">{t('{word} · intrinsic vs market', word=t('Upside') if upside >= 0 else t('Downside'))} {_help('Upside / downside')}</div></div>
       </div>
       <div class="ix-range"><div class="ix-label">{t('Valuation range vs market price')}</div>
-        {ui.range_bar(prices, market_price, scen)}</div>
+        {ui.range_bar(prices, market_price, scen, {k: _help(k.capitalize()) for k in SCENARIOS})}</div>
     </div>""")
 
     wacc_cls = 'user' if ctx.get('wacc_mode') == 'manual' else ''
@@ -857,33 +865,6 @@ def _blocked(title, body_html):
     ui.state_card(title, body_html, 'block')
 
 
-SCENARIO_MEANING = {
-    'conservative': ('Conservative', 'What the stock is worth if things go worse than expected. Revenue and margin '
-                     'land at the 20th percentile of the model\'s past forecast errors (only 1 in 5 past forecasts '
-                     'came out worse), and after year 10 new investment earns only its cost of capital, so growth '
-                     'adds no value.'),
-    'base': ('Base', 'The central case: the most likely path. Growth fades from its latest rate toward typical company '
-             'growth and then to the terminal rate; the margin moves toward the company\'s own long-run median.'),
-    'optimistic': ('Optimistic', 'What the stock is worth if things go better than expected. Revenue and margin land '
-                   'at the 80th percentile of the model\'s past forecast errors (only 1 in 5 past forecasts came out '
-                   'better). It is a good outcome, not the best possible one.'),
-}
-
-
-def _scenario_guide(results):
-    """Plain-language meaning of the three cases, with each one's value per share."""
-    cells = ''
-    for s in SCENARIOS:
-        title, body = SCENARIO_MEANING[s]
-        val = results.get(s, {}).get('valuation', {}).get('intrinsic_price')
-        price = ui.usd(val) if ui.is_num(val) else t('not valued')
-        cells += (f'<div class="ix-hero-cell">{ui.tag(t(title), "plain")}<div class="ix-big" style="font-size:1.4rem">'
-                  f'{price}</div><div class="ix-big-sub" style="font-size:.9rem;margin-top:8px">{t(body)}</div></div>')
-    ui.heading(t('What the three cases mean'), t('Three versions of the future, not three opinions: the range shows '
-                                                  'how much the value depends on how the business turns out'))
-    ui.md(f'<div class="ix-hero"><div class="ix-hero-top">{cells}</div></div>')
-
-
 def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_shares=None, context=None):
     """Render the workspace. `context` (optional, presentation only) carries display metadata from app.py:
     slot (header container), price_source, price_mode, wacc_mode, g_changed, sic, industry."""
@@ -977,5 +958,4 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         _model_data(results, scen, data)
     else:
         _overview(results, scen, wacc, market_price, market_shares, data, terminal_growth, ctx)
-        _scenario_guide(results)
     ui.footer()

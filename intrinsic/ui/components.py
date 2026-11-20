@@ -76,7 +76,7 @@ def state_card(title, body_html, kind=''):
     md(f'<div class="ix-state-card {kind}" role="status"><h4>{escape(title)}</h4>{body_html}</div>')
 
 
-def range_bar(prices, market_price, scen):
+def range_bar(prices, market_price, scen, help_html=None):
     """Football-field strip: conservative→optimistic band, scenario ticks and the market price.
 
     `prices` maps scenario → intrinsic price (or None). Purely positional; values are printed as given.
@@ -108,7 +108,7 @@ def range_bar(prices, market_price, scen):
     parts.append(f'<div class="ix-range-ends"><span>{usd(lo_d, 0)}</span><span>{t("USD per share")}</span>'
                  f'<span>{usd(hi_d, 0)}</span></div>')
     legend = ''.join(f'<span><i style="background:{SCENARIO_COLORS[s]}"></i>{scenario(s)}'
-                     f'{" " + t("(selected)") if s == scen else ""}</span>' for s in ('conservative', 'base', 'optimistic')
+                     f'{" " + t("(selected)") if s == scen else ""}{(help_html or {}).get(s, "")}</span>' for s in ('conservative', 'base', 'optimistic')
                      if is_num(prices.get(s)))
     parts.append(f'<div class="ix-legend">{legend}<span><i class="dash"></i>{t("Market price")}</span>'
                  f'<span>{t("Band = conservative → optimistic")}</span></div>')

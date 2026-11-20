@@ -212,21 +212,6 @@ ES = {
     '"Your input".':
         'Precargados con los valores del Modelo 27. Cambia cualquier número para correr tu propio caso; los datos '
         'cambiados se marcan como "Tu dato".',
-    'What the three cases mean': 'Qué significa cada caso',
-    'Three versions of the future, not three opinions: the range shows how much the value depends on how the business turns out':
-        'Tres versiones del futuro, no tres opiniones: el rango muestra cuánto depende el valor de cómo le vaya al negocio',
-    'not valued': 'sin valorar',
-    "What the stock is worth if things go worse than expected. Revenue and margin land at the 20th percentile of the model's past forecast errors (only 1 in 5 past forecasts came out worse), and after year 10 new investment earns only its cost of capital, so growth adds no value.":
-        'Lo que vale la acción si las cosas salen peor de lo esperado. Ingresos y margen quedan en el percentil 20 de '
-        'los errores pasados del modelo (solo 1 de cada 5 pronósticos salió peor), y después del año 10 la nueva '
-        'inversión rinde solo su costo de capital, así que crecer no agrega valor.',
-    "The central case: the most likely path. Growth fades from its latest rate toward typical company growth and then to the terminal rate; the margin moves toward the company's own long-run median.":
-        'El caso central: el camino más probable. El crecimiento baja desde su último nivel hacia el de una empresa '
-        'típica y luego a la tasa terminal; el margen se acerca a la mediana histórica de la propia empresa.',
-    "What the stock is worth if things go better than expected. Revenue and margin land at the 80th percentile of the model's past forecast errors (only 1 in 5 past forecasts came out better). It is a good outcome, not the best possible one.":
-        'Lo que vale la acción si las cosas salen mejor de lo esperado. Ingresos y margen quedan en el percentil 80 de '
-        'los errores pasados del modelo (solo 1 de cada 5 pronósticos salió mejor). Es un buen resultado, no el '
-        'mejor posible.',
     'Reset to model values': 'Volver a los valores del modelo',
     'Revenue growth next year (%)': 'Crecimiento de ingresos el próximo año (%)',
     'Model estimate for next year. The excess over typical company growth then fades at the calibrated speed, and '
@@ -838,6 +823,15 @@ GLOSSARY_ES = {
     'Upside / downside': ('Potencial alza / baja', 'Valor intrínseco vs precio de mercado: (intrínseco / mercado − 1) × 100.'),
     'WACC': ('WACC', 'Costo de capital promedio ponderado: la tasa con que se descuentan los flujos futuros. Un WACC '
              'más alto → menor valor.'),
+    'Conservative': ('Conservador', 'Lo que vale la acción si las cosas salen peor de lo esperado. Ingresos y margen '
+                     'quedan en el percentil 20 de los errores pasados del modelo (solo 1 de cada 5 pronósticos salió '
+                     'peor), y después del año 10 la nueva inversión rinde solo su costo de capital, así que crecer no '
+                     'agrega valor.'),
+    'Base': ('Base', 'El caso central: el camino más probable. El crecimiento baja desde su último nivel hacia el de una '
+             'empresa típica y luego a la tasa terminal; el margen se acerca a la mediana histórica de la propia empresa.'),
+    'Optimistic': ('Optimista', 'Lo que vale la acción si las cosas salen mejor de lo esperado. Ingresos y margen quedan '
+                   'en el percentil 80 de los errores pasados del modelo (solo 1 de cada 5 pronósticos salió mejor). Es '
+                   'un buen resultado, no el mejor posible.'),
     'Scenario': ('Escenario', 'Conservador y optimista usan los percentiles 20 y 80 de los errores reales fuera de '
                  'muestra del modelo para ingresos y margen. El conservador además supone que las ventajas '
                  'competitivas se desvanecen (las nuevas inversiones solo rinden el WACC).'),

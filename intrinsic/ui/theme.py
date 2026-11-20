@@ -249,8 +249,8 @@ table.ix-table {{ width:100%; border-collapse: collapse; font-size: .8rem; }}
   transform: translate(-50%,0); }}
 /* Items at the edges of a row open their tooltip inward instead of centred, so it never runs off the page
    (the first glossary chip, e.g. "WACC", sits against the left edge). */
-:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):first-child .intrinsic-tip {{ left:0; transform: translate(0,3px); }}
-:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):first-child .intrinsic-help:is(:hover, :focus-visible) .intrinsic-tip {{
+:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item, .ix-legend > span):first-child .intrinsic-tip {{ left:0; transform: translate(0,3px); }}
+:is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item, .ix-legend > span):first-child .intrinsic-help:is(:hover, :focus-visible) .intrinsic-tip {{
   transform: translate(0,0); }}
 :is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):last-child .intrinsic-tip {{ left:auto; right:0; transform: translate(0,3px); }}
 :is(.ix-metric, .ix-hero-cell, .intrinsic-glossary-item):last-child .intrinsic-help:is(:hover, :focus-visible) .intrinsic-tip {{
