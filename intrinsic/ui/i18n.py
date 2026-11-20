@@ -212,6 +212,119 @@ ES = {
     '"Your input".':
         'Precargados con los valores del Modelo 27. Cambia cualquier número para correr tu propio caso; los datos '
         'cambiados se marcan como "Tu dato".',
+    # ---- reverse DCF
+    '{mT:.1%} target · {mH:.1%} in year {n}': '{mT:.1%} objetivo · {mH:.1%} en el año {n}',
+    'Intrinsic value': 'Valor intrínseco',
+    "<strong>Discount rate:</strong> with Intrinsic's cash flows, the price corresponds to a WACC of {x:.2%} instead of {w:.2%}. This is a diagnostic of the expectations in the price, not the company's true cost of capital.":
+        '<strong>Tasa de descuento:</strong> con los flujos de caja de Intrinsic, el precio corresponde a un WACC de {x:.2%} en lugar de {w:.2%}. Es un diagnóstico de las expectativas que hay en el precio, no el verdadero costo de capital de la empresa.',
+    '<strong>Discount rate:</strong> {why}.':
+        '<strong>Tasa de descuento:</strong> {why}.',
+    "<strong>Growth:</strong> to justify {p}, {name} would need revenue growth {pp:.1f} points a year {dir} Intrinsic's forecast in years 1–5 (average {ic:.1%} a year over {n} years instead of {c:.1%}), with WACC, margins and reinvestment unchanged.":
+        '<strong>Crecimiento:</strong> para justificar {p}, {name} necesitaría un crecimiento de ingresos {pp:.1f} puntos al año {dir} del pronóstico de Intrinsic en los años 1–5 (promedio de {ic:.1%} al año durante {n} años en lugar de {c:.1%}), con el WACC, los márgenes y la reinversión sin cambios.',
+    '<strong>Growth:</strong> {why}: within a premium of {lo:+.0f} to {hi:+.0f} points a year, growth alone cannot reproduce {p} with the other assumptions unchanged.':
+        '<strong>Crecimiento:</strong> {why}: con una prima entre {lo:+.0f} y {hi:+.0f} puntos al año, el crecimiento por sí solo no reproduce {p} con los demás supuestos sin cambios.',
+    "<strong>Margin:</strong> with Intrinsic's revenue path, the price requires a long-run operating margin of {x:.1%}, against {m:.1%} assumed and {m0:.1%} in the latest year.":
+        '<strong>Margen:</strong> con la trayectoria de ingresos de Intrinsic, el precio requiere un margen operativo de largo plazo de {x:.1%}, frente al {m:.1%} supuesto y al {m0:.1%} del último año.',
+    "<strong>Margin:</strong> {why}: no long-run margin between {lo:.0%} and {hi:.0%} reproduces {p} with Intrinsic's revenue path.":
+        '<strong>Margen:</strong> {why}: ningún margen de largo plazo entre {lo:.0%} y {hi:.0%} reproduce {p} con la trayectoria de ingresos de Intrinsic.',
+    'Average {c:.1%} a year over {n} years (year 1: {g1:.1%})':
+        'Promedio de {c:.1%} al año durante {n} años (año 1: {g1:.1%})',
+    'Did not converge':
+        'No convergió',
+    'Each requirement is solved independently with brentq on f(x) = DCF price(x) − market price, inside fixed economic bounds that are never widened. These are the expectations embedded in the price, not forecasts, and a gap between price and value is not by itself a buy or sell signal.':
+        'Cada requisito se resuelve por separado con brentq sobre f(x) = precio DCF(x) − precio de mercado, dentro de límites económicos fijos que nunca se amplían. Son las expectativas incorporadas en el precio, no pronósticos, y una diferencia entre precio y valor no es por sí sola una señal de compra o venta.',
+    "Each row is solved on its own, holding everything else at Intrinsic's values":
+        'Cada fila se resuelve por separado, manteniendo todo lo demás en los valores de Intrinsic',
+    'Historical (latest year)':
+        'Histórico (último año)',
+    'Historical median':
+        'Mediana histórica',
+    'Implied assumptions':
+        'Supuestos implícitos',
+    'Implied by the market price':
+        'Implícito en el precio de mercado',
+    'Intrinsic ({scen})':
+        'Intrinsic ({scen})',
+    'Intrinsic assumption':
+        'Supuesto de Intrinsic',
+    'Intrinsic forecast vs the path the market price requires (growth premium mode)':
+        'Pronóstico de Intrinsic frente a la trayectoria que requiere el precio de mercado (modo prima de crecimiento)',
+    'Intrinsic long-run target':
+        'Objetivo de largo plazo de Intrinsic',
+    'Intrinsic, final forecast year':
+        'Intrinsic, último año del pronóstico',
+    'Invalid inputs':
+        'Datos inválidos',
+    'It needs a market price and a DCF value for this scenario.':
+        'Necesita un precio de mercado y un valor DCF para este escenario.',
+    'Market-implied':
+        'Implícito del mercado',
+    'Market-implied requirement':
+        'Requerimiento implícito del mercado',
+    'No market-implied growth path: {why}':
+        'Sin trayectoria de crecimiento implícita: {why}',
+    'No model value in the range':
+        'El modelo no da valor en el rango',
+    'No solution within the bounds':
+        'Sin solución dentro de los límites',
+    'Operating margin':
+        'Margen operativo',
+    'Operating margin (long run)':
+        'Margen operativo (largo plazo)',
+    'Price minus value':
+        'Precio menos valor',
+    'Reverse DCF not available':
+        'DCF inverso no disponible',
+    'Reverse DCF — Market expectations':
+        'DCF inverso — Expectativas del mercado',
+    'Reverse DCF':
+        'DCF inverso',
+    'Several solutions; none selected':
+        'Varias soluciones; no se elige ninguna',
+    'Solved':
+        'Resuelto',
+    'Solver':
+        'Solucionador',
+    'Status':
+        'Estado',
+    'Variable':
+        'Variable',
+    "What the company would have to deliver for today's price to be fair, using the same cash-flow engine":
+        'Lo que la empresa tendría que lograr para que el precio de hoy sea justo, con el mismo motor de flujos de caja',
+    'above':
+        'por encima',
+    'below':
+        'por debajo',
+    'converged in {i} iterations · residual {r} per share':
+        'convergió en {i} iteraciones · residuo {r} por acción',
+    'held constant in every mode':
+        'constante en todos los modos',
+    'used by Intrinsic':
+        'usado por Intrinsic',
+    '{p:+.1%} of the intrinsic value':
+        '{p:+.1%} del valor intrínseco',
+    '{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: average growth {c:.1%} a year':
+        '{pp:+.1f} pp al año en los años 1–5, bajando a 0 en el año {n}: crecimiento promedio de {c:.1%} al año',
+    '{scen} scenario':
+        'escenario {scen}',
+    '{why} (premium tested from {lo:+.0f} to {hi:+.0f} pp a year)':
+        '{why} (prima probada de {lo:+.0f} a {hi:+.0f} pp al año)',
+    '{why} (tested {lo:.0%} to {hi:.0%})':
+        '{why} (probado de {lo:.0%} a {hi:.0%})',
+    'Revenue growth: Intrinsic vs market-implied':
+        'Crecimiento de ingresos: Intrinsic vs implícito del mercado',
+    'Revenue: Intrinsic vs market-implied':
+        'Ingresos: Intrinsic vs implícito del mercado',
+    'The value does not move in one direction across the range; check the solution.':
+        'El valor no se mueve en una sola dirección en el rango; revisa la solución.',
+    'Requires {pp:.1f} extra points of revenue growth a year for five years: far above the persistence observed for companies of this size.':
+        'Requiere {pp:.1f} puntos extra de crecimiento de ingresos al año durante cinco años: muy por encima de la persistencia observada en empresas de este tamaño.',
+    'Requires a long-run margin of {x:.1%}, more than 5 points above the latest {m0:.1%}.':
+        'Requiere un margen de largo plazo de {x:.1%}, más de 5 puntos por encima del último {m0:.1%}.',
+    'Implied WACC {x:.2%} is below the risk-free rate ({rf:.2%}): no investor would accept a risky stock at that return, so the price embeds growth or margins above the forecast.':
+        'El WACC implícito de {x:.2%} está por debajo de la tasa libre de riesgo ({rf:.2%}): ningún inversor aceptaría ese rendimiento por una acción con riesgo, así que el precio incorpora crecimiento o márgenes superiores al pronóstico.',
+    'Implied WACC is within 1 point of terminal growth: the value is extremely sensitive here.':
+        'El WACC implícito está a menos de 1 punto del crecimiento terminal: el valor es extremadamente sensible en esta zona.',
     'Reset to model values': 'Volver a los valores del modelo',
     'Revenue growth next year (%)': 'Crecimiento de ingresos el próximo año (%)',
     'Model estimate for next year. The excess over typical company growth then fades at the calibrated speed, and '

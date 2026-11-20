@@ -64,6 +64,21 @@ SEC EDGAR (CompanyFacts, submissions)            Yahoo Finance            Damoda
 Conservative and optimistic scenarios are the 20th / 80th percentiles of the model's *own measured* forecast
 errors, scaled to each company's volatility — not arbitrary ±%.
 
+### Reverse DCF (`intrinsic/reverse_dcf.py`)
+
+Asks what the market price implies instead of what the model thinks. Each mode changes one driver of the selected
+scenario and prices it with the same `project` → `value` functions (same terminal value, net-debt bridge and
+shares), so at the original driver both engines give the identical price:
+
+| Mode | Solves for | Bounds | Held constant |
+|---|---|---|---|
+| Growth | premium over the calibrated growth path, full in years 1–5, tapering to 0 by year 10 | −15 to +30 pp/yr | WACC, terminal growth, margins, tax, reinvestment, bridge |
+| Margin | long-run operating margin | 0% – 75% | revenue path, WACC, terminal growth, reinvestment rules, bridge |
+| WACC | discount rate | g + 0.5 pp – 25% | all cash flows, terminal growth, bridge |
+
+The range is scanned first; Brent's method solves within a single sign change. No solution, several solutions
+and non-monotone responses are reported rather than forced; bounds are never widened.
+
 ### Discount rate (`intrinsic/wacc_data.py`, `intrinsic/wacc_inputs.py`, `intrinsic/industry_beta.py`)
 
 | Input | Default | Why |
@@ -151,6 +166,7 @@ app.py                  Streamlit entry point (inputs and layout)
 intrinsic/              valuation engine
   inputs.py             load and audit a company's SEC history and net-debt bridge
   forecast.py           driver model, terminal value, valuation, consistency checks
+  reverse_dcf.py        implied growth, margin and WACC that reproduce the market price (same engine)
   sec_data.py           cached SEC EDGAR access, annual facts as originally reported
   sec_history.py        historical statements from XBRL tags
   balance_sheet.py      balance-sheet normalisation
@@ -161,11 +177,11 @@ intrinsic/              valuation engine
   wacc_inputs.py        risk-free rate, ERP, synthetic-rating cost of debt, tax
   industry_beta.py      SIC → Damodaran industry, Hamada relevering
   market_data.py, market_reference.py, sec_client.py, company_directory.py
-  dashboard_panel.py    Overview · Forecast · Valuation · Sensitivity · Model & Data
+  dashboard_panel.py    Overview · Forecast · Valuation · Sensitivity · Risk & return · Reverse DCF · Final verdict · Model & Data
   ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests (79), including translation coverage
+tests/                  unit tests (139), including translation coverage
 docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```

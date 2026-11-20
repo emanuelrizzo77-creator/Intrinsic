@@ -8,6 +8,7 @@ Visual building blocks live in intrinsic/ui.
 from __future__ import annotations
 
 import json
+from statistics import median
 import math
 import os
 import re
@@ -804,6 +805,161 @@ def _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at):
     return cache[key]
 
 
+def _reverse_cached(ticker, res, scen, data, market_price, wacc, g, overrides, rf):
+    """Reverse DCF for the selected scenario, cached per inputs (session only; never shared across scenarios)."""
+    from intrinsic import reverse_dcf as rv
+    br = data['bridge']
+    key = (ticker, scen, round(wacc, 8), round(g, 8), br['net_debt'], br['shares'], round(market_price, 6),
+           json.dumps(overrides or {}, sort_keys=True, default=str), rf)
+    cache = st.session_state.setdefault('ix_reverse_cache', {})
+    if key not in cache:
+        cache[key] = rv.run_all(res, market_price, net_debt=br['net_debt'], shares=br['shares'], risk_free_rate=rf)
+    return cache[key]
+
+
+def _reverse_dcf(ticker, results, scen, data, market_price, wacc, g, overrides, ctx):
+    from intrinsic import reverse_dcf as rv
+    ui.heading(t('Reverse DCF — Market expectations'),
+               t('What the company would have to deliver for today\'s price to be fair, using the same cash-flow engine'))
+    res = results[scen]
+    if not ui.is_num(market_price) or market_price <= 0 or 'valuation' not in res:
+        ui.state_card(t('Reverse DCF not available'), t('It needs a market price and a DCF value for this scenario.'))
+        return
+    capm = ctx.get('capm') or {}
+    rf = capm.get('risk_free_rate')
+    out = _reverse_cached(ticker, res, scen, data, market_price, wacc, g, overrides, rf)
+    v, d = res['valuation'], res['assumptions']['drivers']
+    value = v['intrinsic_price']
+    diff = market_price - value
+
+    # A. valuation comparison
+    ui.md('<div class="ix-metrics">'
+          + ui.metric(t('Market price'), ui.usd(market_price), escape(ctx.get('price_source', '')), '', _help('Market price'))
+          + ui.metric(t('Intrinsic value'), ui.usd(value), t('{scen} scenario', scen=scenario(scen)), 'model',
+                      _help('Intrinsic value'))
+          + ui.metric(t('Price minus value'), ('+' if diff >= 0 else '−') + ui.usd(abs(diff)),
+                      t('{p:+.1%} of the intrinsic value', p=diff / value) if value > 0 else '—', '')
+          + ui.metric('WACC', ui.pct(wacc), t('used by Intrinsic'), '', _help('WACC'))
+          + ui.metric(t('Terminal growth'), ui.pct(g), t('held constant in every mode'), '')
+          + '</div>')
+
+    # B. implied assumptions
+    rows = res['projection']['rows']
+    r0 = d['revenue0']['value']
+    paths = rv.growth_paths(res, out['growth'])
+    n = len(rows)
+    cagr = rv.cagr(r0, paths['revenue'][-1], n)
+    icagr = rv.cagr(r0, paths['implied_revenue'][-1], n) if 'implied_revenue' in paths else None
+
+    def unsolved(o):
+        return {'no_solution': t('No solution within the bounds'), 'multiple': t('Several solutions; none selected'),
+                'not_converged': t('Did not converge'), 'no_value': t('No model value in the range'),
+                'not_valued': t('Not valued'), 'invalid': t('Invalid inputs')}.get(o['status'], o['status'])
+
+    def status_tag(o):
+        return ui.tag(t('Solved'), 'pos') if o['status'] == 'solved' else ui.tag(unsolved(o), 'warn')
+
+    go_, mo, wo = out['growth'], out['margin'], out['wacc']
+    lo_g, hi_g = go_['bounds'] if 'bounds' in go_ else rv.GROWTH_PREMIUM_BOUNDS
+    lo_m, hi_m = mo['bounds'] if 'bounds' in mo else rv.MARGIN_BOUNDS
+    grow_req = (t('{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: average growth {c:.1%} a year',
+                  pp=go_['root'] * 100, n=n, c=icagr) if go_['status'] == 'solved' else
+                t('{why} (premium tested from {lo:+.0f} to {hi:+.0f} pp a year)', why=unsolved(go_), lo=lo_g * 100,
+                  hi=hi_g * 100))
+    marg_req = (f"{mo['root']:.1%}" if mo['status'] == 'solved' else
+                t('{why} (tested {lo:.0%} to {hi:.0%})', why=unsolved(mo), lo=lo_m, hi=hi_m))
+    wacc_req = (f"{wo['root']:.2%}" if wo['status'] == 'solved' else unsolved(wo))
+    m0, mT, mH = d['margin_start']['value'], d['margin_target']['value'], rows[-1]['ebita_margin']
+    table = ui.html_table(
+        [t('Variable'), t('Intrinsic assumption'), t('Market-implied requirement'), t('Status')],
+        [('', [(t('Revenue growth'), ''),
+               (t('Average {c:.1%} a year over {n} years (year 1: {g1:.1%})', c=cagr, n=n, g1=rows[0]['growth']), ''),
+               (grow_req, ''), (status_tag(go_), '')]),
+         ('', [(t('Operating margin (long run)'), ''),
+               (t('{mT:.1%} target · {mH:.1%} in year {n}', mT=mT, mH=mH, n=n), ''), (marg_req, ''), (status_tag(mo), '')]),
+         ('', [('WACC', ''), (f'{wacc:.2%}', ''), (wacc_req, ''), (status_tag(wo), '')])])
+    ui.heading(t('Implied assumptions'), t('Each row is solved on its own, holding everything else at Intrinsic\'s values'))
+    ui.md(table)
+    hist_m = [r.get('EBITA margin', r.get('EBIT margin')) for r in data.get('history') or []]
+    hist_m = [x for x in hist_m if is_number(x)]
+    margin_rows = [(t('Historical (latest year)'), f'{m0:.1%}' if is_number(m0) else '—'),
+                   (t('Historical median'), f'{median(hist_m):.1%}' if hist_m else '—'),
+                   (t('Intrinsic long-run target'), f'{mT:.1%}'),
+                   (t('Intrinsic, final forecast year'), f'{mH:.1%}'),
+                   (t('Implied by the market price'), marg_req)]
+    solver_rows = []
+    for label, o in ((t('Revenue growth'), go_), (t('Operating margin'), mo), ('WACC', wo)):
+        if o['status'] == 'solved':
+            solver_rows.append((label, t('converged in {i} iterations · residual {r} per share', i=o['iterations'],
+                                         r=ui.usd(abs(o['residual']), 6))))
+        else:
+            solver_rows.append((label, unsolved(o)))
+    c1, c2 = st.columns(2, gap='small')
+    with c1:
+        ui.md(f'<div class="ix-note"><div class="ix-label">{t("Operating margin")}</div>'
+              f'<div class="ix-state">{ui.kv_rows(margin_rows)}</div></div>')
+    with c2:
+        ui.md(f'<div class="ix-note"><div class="ix-label">{t("Solver")}</div>'
+              f'<div class="ix-state">{ui.kv_rows(solver_rows)}</div></div>')
+
+    # C/D. growth and revenue paths
+    years = paths['year']
+    implied_ok = 'implied_growth' in paths
+    cap = (t('Intrinsic forecast vs the path the market price requires (growth premium mode)') if implied_ok else
+           t('No market-implied growth path: {why}', why=unsolved(go_).lower()))
+    c3, c4 = st.columns(2, gap='small')
+    for col, key, ikey, title, scale, fmt, ytitle in (
+            (c3, 'growth', 'implied_growth', 'Revenue growth: Intrinsic vs market-implied', 100, '%{y:.1f}%', '%'),
+            (c4, 'revenue', 'implied_revenue', 'Revenue: Intrinsic vs market-implied', 1e-9, '$%{y:,.1f} B',
+             t('USD billions'))):
+        with col:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=years, y=[y * scale for y in paths[key]], mode='lines+markers',
+                                     name=t('Intrinsic ({scen})', scen=scenario(scen).lower()),
+                                     line=dict(color=COLORS[scen], width=2.4), marker=dict(size=6),
+                                     hovertemplate=fmt))
+            if implied_ok:
+                fig.add_trace(go.Scatter(x=years, y=[y * scale for y in paths[ikey]], mode='lines+markers',
+                                         name=t('Market-implied'), line=dict(color=T['market'], width=2.4, dash='dash'),
+                                         marker=dict(size=6), hovertemplate=fmt))
+            fig.update_layout(template='intrinsic', yaxis_title=ytitle, height=300, hovermode='x unified',
+                              legend=dict(orientation='h', y=-0.18, x=0))
+            _chart(fig, title, cap, key=f'reverse-{key}')
+
+    # E. interpretation, from the computed results only
+    name = data.get('name') or ticker
+    notes = []
+    if go_['status'] == 'solved':
+        more = go_['root'] > 0
+        notes.append(t('<strong>Growth:</strong> to justify {p}, {name} would need revenue growth {pp:.1f} points a '
+                       'year {dir} Intrinsic\'s forecast in years 1–5 (average {ic:.1%} a year over {n} years instead of '
+                       '{c:.1%}), with WACC, margins and reinvestment unchanged.', p=ui.usd(market_price), name=escape(name),
+                       pp=abs(go_['root']) * 100, dir=t('above') if more else t('below'), ic=icagr, n=n, c=cagr))
+    else:
+        notes.append(t('<strong>Growth:</strong> {why}: within a premium of {lo:+.0f} to {hi:+.0f} points a year, '
+                       'growth alone cannot reproduce {p} with the other assumptions unchanged.', why=unsolved(go_),
+                       lo=lo_g * 100, hi=hi_g * 100, p=ui.usd(market_price)))
+    if mo['status'] == 'solved':
+        notes.append(t('<strong>Margin:</strong> with Intrinsic\'s revenue path, the price requires a long-run operating '
+                       'margin of {x:.1%}, against {m:.1%} assumed and {m0:.1%} in the latest year.', x=mo['root'], m=mT,
+                       m0=m0))
+    else:
+        notes.append(t('<strong>Margin:</strong> {why}: no long-run margin between {lo:.0%} and {hi:.0%} reproduces '
+                       '{p} with Intrinsic\'s revenue path.', why=unsolved(mo), lo=lo_m, hi=hi_m, p=ui.usd(market_price)))
+    if wo['status'] == 'solved':
+        notes.append(t('<strong>Discount rate:</strong> with Intrinsic\'s cash flows, the price corresponds to a WACC of '
+                       '{x:.2%} instead of {w:.2%}. This is a diagnostic of the expectations in the price, not the '
+                       'company\'s true cost of capital.', x=wo['root'], w=wacc))
+    else:
+        notes.append(t('<strong>Discount rate:</strong> {why}.', why=unsolved(wo)))
+    warns = [t(rv.WARNING_TEXT[c], **p) for o in (go_, mo, wo) for c, p in o.get('warnings', [])]
+    ui.md('<div class="ix-note"><div class="ix-label">' + t('What this means') + '</div><ul>'
+          + ''.join(f'<li>{x}</li>' for x in notes) + ''.join(f'<li>{escape(w)}</li>' for w in warns) + '</ul></div>')
+    st.caption(t('Each requirement is solved independently with brentq on f(x) = DCF price(x) − market price, inside fixed '
+                 'economic bounds that are never widened. These are the expectations embedded in the price, not '
+                 'forecasts, and a gap between price and value is not by itself a buy or sell signal.'))
+
+
 def _model_data(results, scen, data):
     ui.heading(t('Model & data'), t('What is validated, where each assumption comes from, and every data check'))
     note = _validation_note()
@@ -914,7 +1070,7 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
     with nav:
         section = st.segmented_control(t('Dashboard section'),
                                        options=['Overview', 'Forecast', 'Valuation', 'Sensitivity', 'Risk & return',
-                                                'Final verdict', 'Model & Data'],
+                                                'Reverse DCF', 'Final verdict', 'Model & Data'],
                                        format_func=t, default='Overview', key='intrinsic_section_27',
                                        label_visibility='collapsed') or 'Overview'
     with pick:
@@ -952,6 +1108,8 @@ def render_model_27(ticker, wacc, terminal_growth, market_price=None, market_sha
         _sensitivity(data, scen, wacc, terminal_growth, overrides, market_price, ticker)
     elif section == 'Risk & return':
         _risk_return(ticker, scen, data, terminal_growth, overrides, market_price, ctx.get('capm'))
+    elif section == 'Reverse DCF':
+        _reverse_dcf(ticker, results, scen, data, market_price, wacc, terminal_growth, overrides, ctx)
     elif section == 'Final verdict':
         _final_verdict(ticker, results, data, market_price, terminal_growth, overrides, ctx)
     elif section == 'Model & Data':

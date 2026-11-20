@@ -87,6 +87,13 @@ def growth_at(t, g0, center, g_terminal, phi, horizon):
     return g_terminal + (center - g_terminal) * (1 - w) + (g0 - center) * phi ** t
 
 
+def growth_premium_weight(t, horizon):
+    """Share of the reverse-DCF growth premium applied in year t: full in the first half of the horizon, then
+    tapering linearly to zero by year H, so the terminal year still grows at terminal growth (steady state)."""
+    half = horizon / 2
+    return 1.0 - min(max((t - half) / (horizon - half), 0.0), 1.0)
+
+
 def size_bucket(revenue):
     for limit, name in SIZE_BUCKETS:
         if revenue < limit:
@@ -506,6 +513,8 @@ def project(assumptions, horizon=10):
     base_rev = rev_prev
     for t in range(1, horizon + 1):
         g = growth_at(t, g0, gc, gT, phi, horizon)
+        if v.get('growth_premium'):                 # reverse DCF only: parallel shift of the growth path
+            g += v['growth_premium'] * growth_premium_weight(t, horizon)
         base_rev = base_rev * (1 + g)
         rev = base_rev
         if is_number(v.get('profit_years')) and v['profit_years'] > 0:

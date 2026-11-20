@@ -261,13 +261,17 @@ of debt 5.55% · weights 99.0% equity / 1.0% debt → **WACC 10.42%**.
 ### 8.5 Reading the gap
 
 The market price sits above even the optimistic scenario. Rather than tune the model until it agrees, Intrinsic
-asks what the price implies. Holding growth close to today's 17% for the whole decade (revenue of about
-$1.6 trillion in 2036) still gives $475; raising the long-run margin alone, even to 95%, gives $359; only a WACC
-near 5.4% reproduces the price. The market is therefore pricing growth that persists well beyond a ten-year
-horizon, or a much lower required return, than the model's evidence supports. The panel shows that this level of
-growth has rarely persisted, which is exactly why the calibrated fade is fast — and also why the model will
-undervalue the rare company that does sustain it. The dashboard states this assumption on its first page so
-the user can test their own view.
+asks what the price implies with a **reverse DCF** that reuses the same engine and changes one driver at a time
+(November 2026 run, price $488, base value $246, WACC 10.2%):
+
+- **Growth:** revenue would have to grow 14.6 points a year faster than the forecast in years 1–5 (tapering to
+  zero by year 10): about 15.8% a year on average over the decade instead of 5.8%.
+- **Margin:** no long-run operating margin up to 75% reproduces the price with the forecast revenue path.
+- **Discount rate:** the price corresponds to a WACC of 6.4%.
+
+The market is therefore pricing growth that persists far longer, or a much lower required return, than the
+model's evidence supports. The panel shows that this level of growth has rarely persisted, which is exactly why
+the calibrated fade is fast, and also why the model will undervalue the rare company that does sustain it.
 
 ## 9. The application
 
@@ -275,6 +279,13 @@ the user can test their own view.
 
 - **Overview**: intrinsic value, market price and implied upside; the conservative-to-optimistic range against
   the market price; enterprise and equity value; a plain-language verdict and the single biggest assumption.
+- **Reverse DCF**: what the company would have to deliver for the market price to be fair. Three modes, each
+  solved on its own with the same engine and everything else held constant: a growth premium added to the
+  calibrated path in years 1–5 and tapering to zero by year 10 (bounds −15 to +30 points a year), the long-run
+  operating margin (0–75%) and the WACC (terminal growth + 0.5 points to 25%). The bounded range is scanned
+  first; Brent's method (`scipy.optimize.brentq`) then solves inside a single bracket. No solution, several
+  solutions or a non-monotone response are reported, never forced, and the residual is shown. These are the
+  expectations embedded in the price, not forecasts or a buy/sell signal.
 - **Final verdict**: Buy / Hold / Sell. The three scenarios (20th, 50th and 80th percentile of the model's
   measured errors) define a lognormal distribution of value per share; Buy is the probability the value exceeds
   the price by more than a margin of safety (15% by default, editable), Sell the probability it falls short by

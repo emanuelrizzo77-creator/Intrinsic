@@ -1,0 +1,419 @@
+{
+ "run_utc": "2026-11-20T18:19:03.532345+00:00",
+ "results": [
+  {
+   "ticker": "MSFT",
+   "price": 489.9,
+   "price_time": "2026-11-20T18:19:00.537172+00:00",
+   "intrinsic_value": 246.6060786583456,
+   "wacc": 0.10153160031153723,
+   "beta": 1.277542279213273,
+   "risk_free_rate": 0.04929999828338623,
+   "terminal_growth": 0.025,
+   "margin_latest": 0.4819716790371234,
+   "margin_target": 0.4254676122031317,
+   "margin_final_year": 0.4350029105669668,
+   "growth_path": [
+    0.09050683571327377,
+    0.07268130912709442,
+    0.06904490170351384,
+    0.0683030745891034,
+    0.06815174185776367,
+    0.059498278362081276,
+    0.050869388880644746,
+    0.04224551249811438,
+    0.03362265878776087,
+    0.025000013702531444
+   ],
+   "implied_growth_path": [
+    0.23742120586318055,
+    0.21959567927700122,
+    0.21595927185342062,
+    0.2152174447390102,
+    0.21506611200767045,
+    0.1770297744820067,
+    0.13901801097058883,
+    0.1010112605580771,
+    0.06300553281774222,
+    0.025000013702531444
+   ],
+   "revenue_cagr_10y": 0.05782235485532872,
+   "implied_revenue_cagr_10y": 0.15858407877034963,
+   "growth": {
+    "status": "solved",
+    "root": 0.1469143701499068,
+    "roots": [
+     0.1469143701499068
+    ],
+    "residual": 4.3581849240581505e-10,
+    "iterations": 5,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     -0.15,
+     0.3
+    ],
+    "warnings": [
+     "Requires 14.7 extra points of revenue growth a year for five years: far above the persistence observed for companies of this size."
+    ]
+   },
+   "margin": {
+    "status": "no_solution",
+    "root": null,
+    "roots": [],
+    "residual": null,
+    "iterations": null,
+    "monotone": true,
+    "reason": "the market price is above every value the model produces within the bounds",
+    "bounds": [
+     0.0,
+     0.75
+    ],
+    "warnings": []
+   },
+   "wacc_mode": {
+    "status": "solved",
+    "root": 0.06392965200194652,
+    "roots": [
+     0.06392965200194652
+    ],
+    "residual": 8.029024911593297e-07,
+    "iterations": 5,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     0.030000000000000002,
+     0.25
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "ticker": "AAPL",
+   "price": 345.5,
+   "price_time": "2026-11-20T18:19:01.618944+00:00",
+   "intrinsic_value": 133.44474589130232,
+   "wacc": 0.10485582677514582,
+   "beta": 1.3356893767039166,
+   "risk_free_rate": 0.04929999828338623,
+   "terminal_growth": 0.025,
+   "margin_latest": 0.34033297551969993,
+   "margin_target": 0.29782377527561593,
+   "margin_final_year": 0.3049973811812976,
+   "growth_path": [
+    0.0849398996425838,
+    0.07154565416867367,
+    0.068813228091996,
+    0.06825581317235375,
+    0.06814210052874674,
+    0.05949631153096182,
+    0.05086898764709638,
+    0.042245430646470516,
+    0.03362264209002552,
+    0.025000010296193434
+   ],
+   "implied_growth_path": [
+    0.2732826544483373,
+    0.2598884089744272,
+    0.25715598289774955,
+    0.25659856797810726,
+    0.2564848553345003,
+    0.21017051537556466,
+    0.16387464053054848,
+    0.11758253256877194,
+    0.07129119305117622,
+    0.025000010296193434
+   ],
+   "revenue_cagr_10y": 0.057140323125468795,
+   "implied_revenue_cagr_10y": 0.18594996643113837,
+   "growth": {
+    "status": "solved",
+    "root": 0.18834275480575352,
+    "roots": [
+     0.18834275480575352
+    ],
+    "residual": 9.270534064853564e-07,
+    "iterations": 4,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     -0.15,
+     0.3
+    ],
+    "warnings": [
+     "Requires 18.8 extra points of revenue growth a year for five years: far above the persistence observed for companies of this size."
+    ]
+   },
+   "margin": {
+    "status": "no_solution",
+    "root": null,
+    "roots": [],
+    "residual": null,
+    "iterations": null,
+    "monotone": true,
+    "reason": "the market price is above every value the model produces within the bounds",
+    "bounds": [
+     0.0,
+     0.75
+    ],
+    "warnings": []
+   },
+   "wacc_mode": {
+    "status": "solved",
+    "root": 0.05536979019674004,
+    "roots": [
+     0.05536979019674004
+    ],
+    "residual": -4.358133764981176e-07,
+    "iterations": 5,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     0.030000000000000002,
+     0.25
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "ticker": "GOOGL",
+   "price": 272.864,
+   "price_time": "2026-11-20T18:19:02.141698+00:00",
+   "intrinsic_value": 108.10370059818753,
+   "wacc": 0.11616522804743165,
+   "beta": 1.6081449220834099,
+   "risk_free_rate": 0.04929999828338623,
+   "terminal_growth": 0.025,
+   "margin_latest": 0.32032638592380025,
+   "margin_target": 0.26271712158808935,
+   "margin_final_year": 0.27243892666764147,
+   "growth_path": [
+    0.0850016800479371,
+    0.07155825737136573,
+    0.06881579914534518,
+    0.06825633766723699,
+    0.06814220752570292,
+    0.05949633335834088,
+    0.05086899209988171,
+    0.042245431554838724,
+    0.03362264227533264,
+    0.025000010333996087
+   ],
+   "implied_growth_path": [
+    0.3011365423678331,
+    0.28769311969126177,
+    0.2849506614652412,
+    0.284391199987133,
+    0.2842770698455989,
+    0.2324042232142577,
+    0.18054990949181932,
+    0.12869937648279714,
+    0.07684961473931183,
+    0.025000010333996087
+   ],
+   "revenue_cagr_10y": 0.05714790562189842,
+   "implied_revenue_cagr_10y": 0.2046676537441967,
+   "growth": {
+    "status": "solved",
+    "root": 0.216134862319896,
+    "roots": [
+     0.216134862319896
+    ],
+    "residual": 1.2789769243681803e-11,
+    "iterations": 5,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     -0.15,
+     0.3
+    ],
+    "warnings": [
+     "Requires 21.6 extra points of revenue growth a year for five years: far above the persistence observed for companies of this size."
+    ]
+   },
+   "margin": {
+    "status": "no_solution",
+    "root": null,
+    "roots": [],
+    "residual": null,
+    "iterations": null,
+    "monotone": true,
+    "reason": "the market price is above every value the model produces within the bounds",
+    "bounds": [
+     0.0,
+     0.75
+    ],
+    "warnings": []
+   },
+   "wacc_mode": {
+    "status": "solved",
+    "root": 0.058782655341779046,
+    "roots": [
+     0.058782655341779046
+    ],
+    "residual": -8.916271099224105e-07,
+    "iterations": 5,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     0.030000000000000002,
+     0.25
+    ],
+    "warnings": []
+   }
+  },
+  {
+   "ticker": "AMZN",
+   "price": 250.16,
+   "price_time": "2026-11-20T18:19:02.744453+00:00",
+   "intrinsic_value": 71.10801528496506,
+   "wacc": 0.08178501784903609,
+   "beta": 0.7974486929114821,
+   "risk_free_rate": 0.04929999828338623,
+   "terminal_growth": 0.025,
+   "margin_latest": 0.1126925587649458,
+   "margin_target": 0.054043871934477315,
+   "margin_final_year": 0.06394108392133602,
+   "growth_path": [
+    0.07946853419550774,
+    0.07042949561747015,
+    0.06858553174755048,
+    0.06820936311808687,
+    0.0681326247176763,
+    0.05949437846550345,
+    0.05086859330174287,
+    0.042245350200018406,
+    0.03362262567894929,
+    0.025000006948333882
+   ],
+   "implied_growth_path": null,
+   "revenue_cagr_10y": 0.056467597863973484,
+   "implied_revenue_cagr_10y": null,
+   "growth": {
+    "status": "no_solution",
+    "root": null,
+    "roots": [],
+    "residual": null,
+    "iterations": null,
+    "monotone": true,
+    "reason": "the market price is above every value the model produces within the bounds",
+    "bounds": [
+     -0.15,
+     0.3
+    ],
+    "warnings": []
+   },
+   "margin": {
+    "status": "solved",
+    "root": 0.2645682595044232,
+    "roots": [
+     0.2645682595044232
+    ],
+    "residual": 0.0,
+    "iterations": 2,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     0.0,
+     0.75
+    ],
+    "warnings": [
+     "Requires a long-run margin of 26.5%, more than 5 points above the latest 11.3%."
+    ]
+   },
+   "wacc_mode": {
+    "status": "solved",
+    "root": 0.04019388924456149,
+    "roots": [
+     0.04019388924456149
+    ],
+    "residual": -2.4172464918592595e-08,
+    "iterations": 6,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     0.030000000000000002,
+     0.25
+    ],
+    "warnings": [
+     "Implied WACC 4.02% is below the risk-free rate (4.93%): no investor would accept a risky stock at that return, so the price embeds growth or margins above the forecast."
+    ]
+   }
+  },
+  {
+   "ticker": "AMD",
+   "price": 436.26,
+   "price_time": "2026-11-20T18:19:03.384497+00:00",
+   "intrinsic_value": 33.747004787975314,
+   "wacc": 0.11263810183582625,
+   "beta": 1.5050201585535565,
+   "risk_free_rate": 0.04929999828338623,
+   "terminal_growth": 0.025,
+   "margin_latest": 0.173041946938422,
+   "margin_target": 0.09374535730203536,
+   "margin_final_year": 0.10174233336898462,
+   "growth_path": [
+    0.13968185154415913,
+    0.086720870389891,
+    0.07295101528978129,
+    0.06937085296375275,
+    0.06844001075898534,
+    0.05957540016725673,
+    0.05088988361572536,
+    0.04225093151464528,
+    0.033624086170682535,
+    0.025000388583570298
+   ],
+   "implied_growth_path": null,
+   "revenue_cagr_10y": 0.06441455421650688,
+   "implied_revenue_cagr_10y": null,
+   "growth": {
+    "status": "no_solution",
+    "root": null,
+    "roots": [],
+    "residual": null,
+    "iterations": null,
+    "monotone": true,
+    "reason": "the market price is above every value the model produces within the bounds",
+    "bounds": [
+     -0.15,
+     0.3
+    ],
+    "warnings": []
+   },
+   "margin": {
+    "status": "no_solution",
+    "root": null,
+    "roots": [],
+    "residual": null,
+    "iterations": null,
+    "monotone": true,
+    "reason": "the market price is above every value the model produces within the bounds",
+    "bounds": [
+     0.0,
+     0.75
+    ],
+    "warnings": []
+   },
+   "wacc_mode": {
+    "status": "solved",
+    "root": 0.030301668297556296,
+    "roots": [
+     0.030301668297556296
+    ],
+    "residual": -3.700858087540837e-06,
+    "iterations": 6,
+    "monotone": true,
+    "reason": null,
+    "bounds": [
+     0.030000000000000002,
+     0.25
+    ],
+    "warnings": [
+     "Implied WACC 3.03% is below the risk-free rate (4.93%): no investor would accept a risky stock at that return, so the price embeds growth or margins above the forecast.",
+     "Implied WACC is within 1 point of terminal growth: the value is extremely sensitive here."
+    ]
+   }
+  }
+ ]
+}

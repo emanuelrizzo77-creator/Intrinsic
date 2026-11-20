@@ -271,18 +271,31 @@ Tasa libre de riesgo 5,15% · prima 4,23% · beta 1,26 (Software — System & Ap
 ### 8.5 Cómo leer la diferencia
 
 El precio de mercado está por encima incluso del escenario optimista. En lugar de ajustar el modelo hasta que
-coincida, Intrinsic se pregunta qué implica el precio. Mantener el crecimiento cerca del 17% actual durante toda
-la década (ingresos de unos $1,6 billones en 2036) todavía da $475; subir solo el margen de largo plazo, incluso
-a 95%, da $359; solo un WACC cercano a 5,4% reproduce el precio. El mercado, entonces, descuenta un crecimiento
-que persiste mucho más allá de un horizonte de diez años, o un retorno exigido mucho menor, de lo que respalda la
-evidencia del modelo. El panel muestra que ese nivel de crecimiento rara vez se ha sostenido, y por eso la
-convergencia calibrada es rápida; por la misma razón, el modelo subvalorará a la rara empresa que sí lo sostenga.
-El dashboard muestra este supuesto en su primera página para que el usuario pruebe su propia visión.
+coincida, Intrinsic se pregunta qué implica el precio con un **DCF inverso** que reutiliza el mismo motor y cambia
+un solo impulsor a la vez (ejecución de noviembre de 2026, precio $488, valor base $246, WACC 10,2%):
+
+- **Crecimiento:** los ingresos tendrían que crecer 14,6 puntos al año más que el pronóstico en los años 1–5
+  (bajando a cero en el año 10): un promedio de 15,8% al año durante la década en lugar de 5,8%.
+- **Margen:** ningún margen operativo de largo plazo hasta 75% reproduce el precio con la trayectoria de ingresos
+  pronosticada.
+- **Tasa de descuento:** el precio corresponde a un WACC de 6,4%.
+
+El mercado, entonces, descuenta un crecimiento que persiste mucho más tiempo, o un retorno exigido mucho menor, de
+lo que respalda la evidencia del modelo. El panel muestra que ese nivel de crecimiento rara vez se ha sostenido, y
+por eso la convergencia calibrada es rápida; por la misma razón, el modelo subvalorará a la rara empresa que sí lo
+sostenga.
 
 ## 9. La aplicación
 
 ![Resumen](figures/overview_es.jpg)
 
+- **DCF inverso**: lo que la empresa tendría que lograr para que el precio de mercado sea justo. Tres modos, cada
+  uno resuelto por separado con el mismo motor y todo lo demás constante: una prima de crecimiento sumada a la
+  trayectoria calibrada en los años 1–5 que baja a cero en el año 10 (límites de −15 a +30 puntos al año), el
+  margen operativo de largo plazo (0–75%) y el WACC (crecimiento terminal + 0,5 puntos hasta 25%). Primero se
+  recorre el rango acotado; luego el método de Brent (`scipy.optimize.brentq`) resuelve dentro de un único
+  intervalo. Si no hay solución, hay varias o la respuesta no es monótona, se informa sin forzarla, y se muestra
+  el error residual. Son las expectativas incorporadas en el precio, no pronósticos ni una señal de compra o venta.
 - **Veredicto final**: Comprar / Mantener / Vender. Los tres escenarios (percentiles 20, 50 y 80 de los
   errores medidos del modelo) definen una distribución lognormal del valor por acción; Comprar es la probabilidad
   de que el valor supere el precio en más que un margen de seguridad (15% por defecto, editable), Vender la de que
