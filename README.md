@@ -51,7 +51,7 @@ SEC EDGAR (CompanyFacts, submissions)            Yahoo Finance            Damoda
 
 | Driver | Rule | Source of the parameters |
 |---|---|---|
-| Revenue growth | `g_t = g_T + (g_0 − g_T)·φ^t` | `g_0` latest year; `φ` estimated on a panel of 2,578 companies by size bucket |
+| Revenue growth | `g_t = c_t + (g_0 − c)·φ^t`; `c_t = c` for years 1–5, then linear from `c` to `g_T` by year 10 | `g_0` latest year; `c` = median growth of the panel (6.8%), the level `φ` is measured against; `φ` estimated on a panel of 2,578 companies by size bucket |
 | Operating margin | `m_t = m* + (m_0 − m*)·ψ^t` | `m*` = median of the company's prior 9 years; `ψ` panel-estimated |
 | Loss-making companies | straight line from `m_0` to the **industry** margin in 7 years; value = (1 − p)·going concern + p·net cash | own median implies losses forever; industry margin from Damodaran (Jan 2026); `p` from cash runway (5–50%), editable |
 | Fixed assets | `NetPPE_t = k_t · Revenue_t` | company history, panel-estimated convergence |

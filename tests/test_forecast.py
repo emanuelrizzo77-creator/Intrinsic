@@ -105,6 +105,20 @@ class DriverModel27(unittest.TestCase):
         self.assertEqual(d['growth_fade']['source'], 'calibrated')
         self.assertEqual(d['intensity_fade']['source'], 'assumption')
 
+    def test_growth_fades_toward_the_calibration_centre_then_to_terminal(self):
+        # phi is measured as reversion toward the panel median growth c, so the forecast must fade toward c
+        # (not straight to terminal growth), hold c through year 5 and reach terminal growth by year 10.
+        cal = {'growth_fade': {'all': {'phi': 0.2}}, 'margin_fade': {'all': {'phi': 0.5}}, 'growth_center': 0.07}
+        out = self.run_model(calibration=cal)
+        g0 = out['assumptions']['drivers']['growth_start']['value']
+        rows = out['projection']['rows']
+        self.assertAlmostEqual(rows[0]['growth'], 0.07 + (g0 - 0.07) * 0.2, places=9)
+        self.assertAlmostEqual(rows[4]['growth'], 0.07 + (g0 - 0.07) * 0.2 ** 5, places=9)
+        self.assertAlmostEqual(rows[-1]['growth'], 0.03, places=6)
+        self.assertTrue(all(a['growth'] >= b['growth'] for a, b in zip(rows[4:], rows[5:])))
+        no_centre = self.run_model(calibration={k: v for k, v in cal.items() if k != 'growth_center'})
+        self.assertAlmostEqual(no_centre['projection']['rows'][0]['growth'], 0.03 + (g0 - 0.03) * 0.2, places=9)
+
     def test_rd_capitalisation_changes_roic_not_cash_flow(self):
         h = history()
         for r in h:

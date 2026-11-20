@@ -110,7 +110,7 @@ Cada impulsor sigue la misma regla: parte de la última observación y converge 
 
 | Impulsor | Ecuación | Parámetros |
 |---|---|---|
-| Crecimiento de ingresos | g<sub>t</sub> = g<sub>T</sub> + (g<sub>0</sub> − g<sub>T</sub>) · φ<sup>t</sup> | g<sub>0</sub> último crecimiento; g<sub>T</sub> crecimiento terminal (2,5%); φ estimado en el panel |
+| Crecimiento de ingresos | g<sub>t</sub> = c<sub>t</sub> + (g<sub>0</sub> − c) · φ<sup>t</sup>; c<sub>t</sub> = c en los años 1–5, luego lineal hasta g<sub>T</sub> en el año 10 | g<sub>0</sub> último crecimiento; c crecimiento mediano del panel (6,8%); g<sub>T</sub> crecimiento terminal (2,5%); φ estimado en el panel |
 | Margen operativo | m<sub>t</sub> = m\* + (m<sub>0</sub> − m\*) · ψ<sup>t</sup> | m\* mediana de los 9 años anteriores; ψ estimado en el panel |
 | Intensidad de capital | ActivoFijo<sub>t</sub> = k<sub>t</sub> · Ingresos<sub>t</sub> | k converge a la mediana de la empresa |
 | Depreciación | Dep<sub>t</sub> = δ · ActivoFijo<sub>t−1</sub> | δ de la historia de la empresa |
@@ -138,7 +138,11 @@ Top 25 cambia.
 Nasdaq, regresando la desviación futura respecto del ancla sobre la desviación de hoy, de 1 a 5 años adelante.
 Las estimaciones por tamaño de ingresos se ajustan hacia el valor de todas las empresas (agrupación parcial con
 200 pseudo-observaciones). Valores actuales: φ = 0,19 para el crecimiento (el exceso de crecimiento se disipa
-rápido), ψ = 0,87 para el margen y 0,98 para la intensidad de capital (ambos persistentes).
+rápido), ψ = 0,87 para el margen y 0,98 para la intensidad de capital (ambos persistentes). El crecimiento se
+mide respecto del crecimiento mediano del panel, c = 6,8%, así que el pronóstico disipa el exceso hacia c y no
+directamente hacia el crecimiento terminal; luego c baja linealmente al crecimiento terminal en los años 6–10.
+(Hasta noviembre de 2026 el pronóstico convergía directo a 2,5%, lo que contaba dos veces la reversión y
+recortaba los valores entre 15% y 30%.)
 
 **Escenarios.** El conservador y el optimista son los percentiles 20 y 80 de los propios errores fuera de muestra
 del modelo para ingresos y margen, escalados a la volatilidad histórica de cada empresa. El conservador además

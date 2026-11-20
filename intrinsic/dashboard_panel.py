@@ -149,8 +149,8 @@ def _validation_note():
 def _sidebar_inputs(ticker, probe):
     d = probe['drivers']
     v = {k: x['value'] for k, x in d.items()}
-    phi, gT = v['growth_fade'], v['terminal_growth']
-    year1 = gT + (v['growth_start'] - gT) * phi        # what the user actually sees for next year
+    phi, gc = v['growth_fade'], v['growth_center']
+    year1 = gc + (v['growth_start'] - gc) * phi        # what the user actually sees for next year (centre held in year 1)
     overrides = {}
     box = st.sidebar.expander(t('Forecast assumptions'), expanded=False)
     box.caption(t('Pre-filled with Model 27 values. Change any number to run your own case; changed inputs are labelled '
@@ -161,7 +161,8 @@ def _sidebar_inputs(ticker, probe):
                 del st.session_state[k]
     fields = (
         ('year1', 'Revenue growth next year (%)', year1,
-         'Model estimate for next year. Growth then slows toward the terminal rate at the calibrated speed.'),
+         'Model estimate for next year. The excess over typical company growth then fades at the calibrated speed, and '
+         'growth reaches the terminal rate by year 10.'),
         ('margin_target', 'Long-run operating margin (%)', v.get('margin_target'),
          'Operating margin before amortisation of acquired intangibles that the business converges to. '
          'Default: median of the company\'s prior 9 years.'),
@@ -184,7 +185,7 @@ def _sidebar_inputs(ticker, probe):
                                       key=f'm27_in_{ticker}_{key}') / 100
         if abs(val - round(default, 4)) > 1e-6:
             if key == 'year1':
-                overrides['growth_start'] = gT + (val - gT) / max(phi, 1e-6)
+                overrides['growth_start'] = gc + (val - gc) / max(phi, 1e-6)
             else:
                 overrides[key] = val
     if path:

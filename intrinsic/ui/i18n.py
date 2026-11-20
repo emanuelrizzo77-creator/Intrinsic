@@ -214,9 +214,10 @@ ES = {
         'cambiados se marcan como "Tu dato".',
     'Reset to model values': 'Volver a los valores del modelo',
     'Revenue growth next year (%)': 'Crecimiento de ingresos el próximo año (%)',
-    'Model estimate for next year. Growth then slows toward the terminal rate at the calibrated speed.':
-        'Estimación del modelo para el próximo año. Luego el crecimiento se desacelera hacia la tasa terminal a la '
-        'velocidad calibrada.',
+    'Model estimate for next year. The excess over typical company growth then fades at the calibrated speed, and '
+    'growth reaches the terminal rate by year 10.':
+        'Estimación del modelo para el próximo año. Luego el exceso sobre el crecimiento típico de una empresa se '
+        'disipa a la velocidad calibrada, y el crecimiento llega a la tasa terminal en el año 10.',
     'Long-run operating margin (%)': 'Margen operativo de largo plazo (%)',
     "Operating margin before amortisation of acquired intangibles that the business converges to. Default: median "
     "of the company's prior 9 years.":

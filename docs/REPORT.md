@@ -106,7 +106,7 @@ Each driver follows the same rule — start at the latest observation, converge 
 
 | Driver | Equation | Parameters |
 |---|---|---|
-| Revenue growth | g<sub>t</sub> = g<sub>T</sub> + (g<sub>0</sub> − g<sub>T</sub>) · φ<sup>t</sup> | g<sub>0</sub> latest growth; g<sub>T</sub> terminal growth (2.5%); φ panel-estimated |
+| Revenue growth | g<sub>t</sub> = c<sub>t</sub> + (g<sub>0</sub> − c) · φ<sup>t</sup>; c<sub>t</sub> = c in years 1–5, then linear to g<sub>T</sub> by year 10 | g<sub>0</sub> latest growth; c median growth of the panel (6.8%); g<sub>T</sub> terminal growth (2.5%); φ panel-estimated |
 | Operating margin | m<sub>t</sub> = m\* + (m<sub>0</sub> − m\*) · ψ<sup>t</sup> | m\* median of the prior 9 years; ψ panel-estimated |
 | Capital intensity | NetPPE<sub>t</sub> = k<sub>t</sub> · Revenue<sub>t</sub> | k converges to the company median |
 | Depreciation | Dep<sub>t</sub> = δ · NetPPE<sub>t−1</sub> | δ from company history |
@@ -133,7 +133,9 @@ Top 25 companies is affected.
 regressing the future deviation from the anchor on today's deviation, h = 1…5 years ahead. Estimates by revenue
 size bucket are shrunk toward the all-company value (partial pooling with 200 pseudo-observations). Current
 production values: φ = 0.19 for growth (excess growth decays quickly), ψ = 0.87 for margins and 0.98 for capital
-intensity (both persistent).
+intensity (both persistent). Growth is measured against the panel's median growth c = 6.8%, so the forecast fades
+the excess toward c, not straight to terminal growth; c then glides to terminal growth over years 6–10. (Until
+November 2026 the forecast faded straight to 2.5%, which double-counted the reversion and cut values by 15–30%.)
 
 **Scenarios.** Conservative and optimistic are the 20th and 80th percentiles of the model's own out-of-sample
 forecast errors for revenue and margin, scaled to each company's historical volatility. The conservative case

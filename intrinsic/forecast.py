@@ -9,7 +9,9 @@ long-run anchor, convergence speed), every value labelled with its SOURCE:
   user        explicit user override
 
 Mechanics (horizon H, default 10 years, then a value-driver terminal value):
-  growth_t   = g_T + (g0 - g_T) * phi^t                 -> converges to terminal g
+  growth_t   = path_t + (g0 - c) * phi^t                -> excess over the panel centre c fades at the calibrated
+               speed; path_t = c for the first half of the horizon, then linear from c to terminal g_T by year H
+               (phi is estimated as reversion toward c, not toward g_T, so fading toward g_T would double-count)
   margin_t   = m* + (m0 - m*) * psi^t
                loss-making companies (own anchor m* <= 0, or still losing money in year H): an explicit
                linear path from m0 to the INDUSTRY margin in N years, and
@@ -75,6 +77,14 @@ def failure_probability(last):
             return p, (f'cash + short-term investments cover {runway:.1f} years of the latest operating loss '
                        f'(rule: >=5y 10%, 2-5y 20%, 1-2y 35%, <1y 50%)')
     return FAILURE_BY_RUNWAY[-1][1], 'no cash runway'
+
+
+def growth_at(t, g0, center, g_terminal, phi, horizon):
+    """Revenue growth in year t: the company's excess over the panel centre fades at phi; the centre itself
+    stays put for the first half of the horizon and then glides linearly to terminal growth by year H."""
+    half = horizon / 2
+    w = min(max((t - half) / (horizon - half), 0.0), 1.0)
+    return g_terminal + (center - g_terminal) * (1 - w) + (g0 - center) * phi ** t
 
 
 def size_bucket(revenue):
@@ -236,6 +246,13 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
 
     cal = calibration or {}
     bucket = size_bucket(rev0) if rev0 else 'all'
+    center = cal.get('growth_center')
+    if is_number(center):
+        d['growth_center'] = _drv(center, 'calibrated',
+                                  'median revenue growth of the calibration panel: the level the fade speed is measured '
+                                  'against; held for the first half of the horizon, then linear to terminal growth')
+    else:
+        d['growth_center'] = _drv(terminal_growth, 'assumption', 'no calibration: growth fades straight to terminal')
 
     def _n(entry):
         n = entry.get('n_by_horizon', {})
@@ -469,7 +486,7 @@ def project(assumptions, horizon=10):
     if not isinstance(horizon, int) or isinstance(horizon, bool) or not 5 <= horizon <= 15:
         raise ValueError('horizon must be an integer between 5 and 15')
     v = {k: x['value'] for k, x in assumptions['drivers'].items()}
-    gT, g0, phi = v['terminal_growth'], v['growth_start'], v['growth_fade']
+    gT, g0, phi, gc = v['terminal_growth'], v['growth_start'], v['growth_fade'], v['growth_center']
     m0, mT, psi = v['margin_start'], v['margin_target'], v['margin_fade']
     k0, kT, psik = v['intensity_start'], v['intensity_target'], v['intensity_fade']
     n0, nT = v['nwc_ratio_start'], v['nwc_ratio_target']
@@ -488,7 +505,7 @@ def project(assumptions, horizon=10):
         life, rd_hist, ra_prev = int(v['rd_life']), list(v['rd_history']), v['research_asset0']
     base_rev = rev_prev
     for t in range(1, horizon + 1):
-        g = gT + (g0 - gT) * phi ** t
+        g = growth_at(t, g0, gc, gT, phi, horizon)
         base_rev = base_rev * (1 + g)
         rev = base_rev
         if is_number(v.get('profit_years')) and v['profit_years'] > 0:
