@@ -347,7 +347,7 @@ SPATIAL_CSS = """<style>
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 85%);
           mask-image: linear-gradient(to top, rgba(0,0,0,.9), transparent 85%);
 }
-[data-testid="stAppViewContainer"] { position: relative; z-index: 1; background: transparent; }
+[data-testid="stAppViewContainer"] { z-index: 1; background: transparent; }   /* keep Streamlit's absolute, viewport-high container: each column scrolls inside it */
 [data-testid="stMain"], [data-testid="stHeader"] { background: transparent; }
 [data-testid="stHeader"] { backdrop-filter: blur(10px); background: rgba(11,14,19,.55); }
 @keyframes ix-ambient {
