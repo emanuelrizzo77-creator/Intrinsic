@@ -113,6 +113,14 @@ Revenue bias at 5 years: −5.8% (criterion: |bias| < 10%). All five pre-registe
 forecasts), years 6–10 and the terminal value (the panel only supports 5-year tests), and the accuracy of the
 final valuation itself.
 
+### Final verdict backtest (`validation/verdict_backtest.py`)
+
+756 point-in-time valuations of 129 held-out companies (10-Ks for fiscal 2012–2020), returns vs SPY. The signal
+points the right way but is weak: rank correlation of P(value > price) with excess return +0.05 / +0.08 / +0.03 at
+1 / 3 / 5 years (95% intervals include zero); it mostly flags losers (bottom quintile −34% log excess over 3 years)
+while Buy signals beat SPY only 49% / 42% / 32% of the time. Survivorship and 2026 betas bias the test; details in
+the report, section 7.5.
+
 ### What was tested and rejected
 
 | Idea | Result |
@@ -183,7 +191,7 @@ intrinsic/              valuation engine
   ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests (167), including translation coverage
+tests/                  unit tests (179), including translation coverage
 docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```

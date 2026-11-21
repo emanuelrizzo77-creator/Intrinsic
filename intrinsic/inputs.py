@@ -58,6 +58,13 @@ def load_inputs(ticker, last_n=10):
             raise DataUnavailable(f'{name}: the SEC has no XBRL financial statements for this registrant '
                                   '(typical of funds, trusts and very new listings).') from exc
         raise
+    return inputs_from_payload(payload, cik=cik, name=name, sic=sic, decision=decision, last_n=last_n)
+
+
+def inputs_from_payload(payload, *, cik, name, sic, decision=None, last_n=10):
+    """Everything load_inputs builds, from a CompanyFacts payload already in hand (e.g. a point-in-time copy made
+    with sec_data.payload_as_of for a backtest)."""
+    decision = decision or classify_sic(sic)
     from intrinsic.foreign_filers import ForeignFilerUnsupported, normalize_payload
     try:
         payload, foreign = normalize_payload(payload)     # 20-F / 40-F filers -> US GAAP, USD, annual report

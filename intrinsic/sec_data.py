@@ -88,6 +88,26 @@ def annual_points(payload, tags, *, vintage='latest', as_of=None, namespace='us-
                    namespace=namespace, unit=unit)
 
 
+def payload_as_of(payload, as_of):
+    """Copy of a CompanyFacts payload keeping only the facts FILED on or before `as_of` (point-in-time view).
+
+    Every value later filed (amendments, restatements, later years) disappears, so whatever is built from the copy
+    is what an analyst could have known on that date."""
+    cut = _as_date(as_of)
+    facts = {}
+    for ns, concepts in payload.get('facts', {}).items():
+        keep_ns = {}
+        for name, concept in concepts.items():
+            units = {u: [r for r in rows if r.get('filed') and _d(r['filed']) <= cut]
+                     for u, rows in concept.get('units', {}).items()}
+            units = {u: rows for u, rows in units.items() if rows}
+            if units:
+                keep_ns[name] = {**concept, 'units': units}
+        if keep_ns:
+            facts[ns] = keep_ns
+    return {**payload, 'facts': facts}
+
+
 def consecutive(a, b):
     """True when fiscal year end b follows a by roughly one year."""
     da, db = _d(a), _d(b)

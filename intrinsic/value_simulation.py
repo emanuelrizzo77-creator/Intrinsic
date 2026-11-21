@@ -13,7 +13,8 @@ draw re-prices the BASE scenario with the same engine (forecast.project -> forec
                             spin-off) does not become a permanent loss of margin
   discount rate             beta ~ N(beta, BETA_SD) and equity risk premium ~ N(ERP, ERP_SD) through CAPM, at the
                             WACC's capital weights; with a manual WACC, WACC ~ N(WACC, WACC_SD)
-  terminal growth           triangular(g - G_HALF_RANGE, g, g + G_HALF_RANGE), kept below the risk-free rate and
+  terminal growth           triangular(g - G_HALF_RANGE, g, g + G_HALF_RANGE), kept below the risk-free rate (or the
+                            user's g when that is higher, so the draws stay centred on the base case) and
                             at least WACC_GAP under the drawn WACC
   failure (loss-makers)     with the model's failure probability the draw is the distress value (net cash)
 
@@ -111,7 +112,7 @@ def simulate(base_result, history, *, net_debt, shares, capm=None, n=N_DRAWS, se
         else:
             wacc = rng.gauss(wacc0, WACC_SD)
         g = _tri(rng, g0 - G_HALF_RANGE, g0, g0 + G_HALF_RANGE)
-        g = min(g, wacc - WACC_GAP, rf if rf is not None else g)
+        g = min(g, wacc - WACC_GAP, max(rf, g0) if rf is not None else g)   # never below the user's own g
         if p_fail and rng.random() < p_fail:
             values.append(distress)
             distressed += 1

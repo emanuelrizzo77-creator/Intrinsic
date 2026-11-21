@@ -1,0 +1,80 @@
+{
+ "source": "Aswath Damodaran, Historical Implied Equity Risk Premiums for the US, https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histimpl.html (page dated January 2026)",
+ "retrieved": "2026-11-20",
+ "convention": "the value for year Y is the implied ERP computed at the END of year Y (published at the start of Y+1); the 2025 row (4.23%, T-bond 4.18%) is the 1 January 2026 snapshot the app uses. A valuation dated in year Y uses the row for Y-1.",
+ "column": "Implied ERP (FCFE)",
+ "by_year": {
+  "2008": {
+   "implied_erp": 0.0643,
+   "tbond": 0.022099999999999998
+  },
+  "2009": {
+   "implied_erp": 0.0436,
+   "tbond": 0.0384
+  },
+  "2010": {
+   "implied_erp": 0.052000000000000005,
+   "tbond": 0.0329
+  },
+  "2011": {
+   "implied_erp": 0.0601,
+   "tbond": 0.018799999999999997
+  },
+  "2012": {
+   "implied_erp": 0.057800000000000004,
+   "tbond": 0.0176
+  },
+  "2013": {
+   "implied_erp": 0.0496,
+   "tbond": 0.0304
+  },
+  "2014": {
+   "implied_erp": 0.057800000000000004,
+   "tbond": 0.0217
+  },
+  "2015": {
+   "implied_erp": 0.061200000000000004,
+   "tbond": 0.0227
+  },
+  "2016": {
+   "implied_erp": 0.056900000000000006,
+   "tbond": 0.0245
+  },
+  "2017": {
+   "implied_erp": 0.0508,
+   "tbond": 0.0241
+  },
+  "2018": {
+   "implied_erp": 0.0596,
+   "tbond": 0.0268
+  },
+  "2019": {
+   "implied_erp": 0.052000000000000005,
+   "tbond": 0.0192
+  },
+  "2020": {
+   "implied_erp": 0.0472,
+   "tbond": 0.009300000000000001
+  },
+  "2021": {
+   "implied_erp": 0.0424,
+   "tbond": 0.0151
+  },
+  "2022": {
+   "implied_erp": 0.0594,
+   "tbond": 0.0388
+  },
+  "2023": {
+   "implied_erp": 0.046,
+   "tbond": 0.0388
+  },
+  "2024": {
+   "implied_erp": 0.0433,
+   "tbond": 0.0458
+  },
+  "2025": {
+   "implied_erp": 0.042300000000000004,
+   "tbond": 0.0418
+  }
+ }
+}

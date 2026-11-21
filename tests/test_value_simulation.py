@@ -110,6 +110,12 @@ class Simulation(unittest.TestCase):
         with mock.patch.object(vs, '_with', spy):
             simulate(res, errors(ZERO), capm={**CAPM, 'risk_free_rate': 0.03}, n=300)
         self.assertTrue(all(g <= w - vs.WACC_GAP + 1e-12 and g <= 0.03 + 1e-12 for w, g in draws if w is not None))
+        draws.clear()
+        with mock.patch.object(vs, '_with', spy):         # risk-free below the user's g: the cap is the user's g
+            simulate(res, errors(ZERO), capm={**CAPM, 'risk_free_rate': 0.01}, n=300)
+        gs = [g for w, g in draws if w is not None]
+        self.assertTrue(all(g <= 0.025 + 1e-12 for g in gs))
+        self.assertGreater(min(gs), 0.01)
 
     def test_missing_inputs_give_no_simulation(self):
         self.assertIsNone(simulate({'status': 'BLOCKED'}, errors(ZERO)))

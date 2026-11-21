@@ -204,6 +204,45 @@ hyperinflationary currency and 1 with no operating income tagged; **zero unexpec
 filers, 11 are now valued. (The coverage script also stopped counting companies without an SEC share count as
 valued before running the model; one such case was previously miscounted.)
 
+### 7.5 Do the verdict's signals predict returns? (historical backtest, November 2026)
+
+`validation/verdict_backtest.py` rebuilds the dashboard's valuation **as of each filing date** for the 403
+held-out companies of the calibration panel (CIK % 5 = 0): statements keep only facts filed by that date, the
+price is the one of two trading days after filing (corrected for later splits), the risk-free rate is that day's
+10-year Treasury, the ERP is the Damodaran implied premium published that year, and the Monte Carlo draws errors
+estimated on training companies only. Outcome: total return over 1, 3 and 5 years minus the S&P 500 (SPY).
+
+1,506 original 10-Ks (fiscal years mid-2012 to 2020) from 214 companies; 189 companies have none (108 file Form
+20-F, 81 listed after 2020). 797 were valued (the rest are the app's own refusals: development stage, missing
+EBIT, incomplete bridge); 41 were dropped as data errors (price under $1 or value/price beyond 10×, e.g. share
+counts reported in thousands), leaving **756 valuations of 129 companies**. Statistics are robust to the heavy
+tails: median excess return, share beating SPY and mean *log* excess return, with 95% intervals that resample
+companies.
+
+| Horizon | Rank corr. P(value > price) vs excess return | Top − bottom quintile of P (log excess) | Buy: beat SPY · mean log | Sell: beat SPY · mean log |
+|---|---|---|---|---|
+| 1 year | +0.05 [−0.01, +0.13] | +7.4% [−0.9%, +16.5%] | 49% · −5.1% | 43% · −9.8% |
+| 3 years | +0.08 [−0.03, +0.18] | +20.4% [+0.2%, +44.6%] | 42% · −13.4% | 38% · −24.0% |
+| 5 years | +0.03 [−0.08, +0.15] | +26.5% [−2.9%, +62.2%] | 32% · −30.0% | 34% · −41.9% |
+
+What it shows:
+
+- **The signal points the right way but is weak.** Every rank correlation is positive and none is clearly above
+  zero; the base value / price ratio behaves the same (+0.07 [0.00, +0.14] at one year, +0.09 at three).
+- **It mostly identifies losers, not winners.** The spread comes from the bottom quintile (lowest P, often a
+  negative model value): −13% log excess at 1 year, −34% at 3, −59% at 5. The other four quintiles are
+  indistinguishable from one another.
+- **Buy did not beat the market.** Buy signals beat SPY 49%, 42% and 32% of the time at 1, 3 and 5 years. Sell
+  signals did worse than Buy signals at every horizon, but the intervals overlap.
+- **P(value > price) is not a probability of beating the market.** In the top quintile (P 0.75–0.99) only 47%,
+  42% and 32% beat SPY. This is why the page keeps calling these probabilities conditional on the model.
+
+Limits of the test: the panel is built from companies that trade today (data/sec_companies.csv) and Yahoo has
+no prices for delisted tickers, so failures and acquisitions are missing (survivorship; it biases returns up, yet
+the sample still trailed the mega-cap-led S&P 500 by a median 35% over five years); 2026 industry betas, rating
+spreads, industry margins and the 25% long-run tax rate are used for every year (look-ahead); fade speeds come
+from the full panel; foreign filers are absent; and 2012–2020 is one market regime.
+
 ## 8. Case study: Microsoft
 
 *Figures computed on 14 November 2026; the live application updates market inputs, so values move slightly.*
@@ -290,7 +329,7 @@ the calibrated fade is fast, and also why the model will undervalue the rare com
   takes one jointly observed five-year path of revenue and margin forecast errors (`data/joint_errors.json`:
   3,925 windows from 610 companies, so the correlation between revenue and margin errors is kept), a beta
   ±0.20 and an equity risk premium ±0.5 points (normal), and terminal growth ±1 point (triangular, below the
-  risk-free rate and 1 point under the drawn WACC). Errors come from companies of the same size, scaled by the
+  risk-free rate, or the user's own terminal growth when that is higher, and 1 point under the drawn WACC). Errors come from companies of the same size, scaled by the
   company's own volatility below $10B and in raw points at $10B and above; companies growing more than 25% use
   a high-growth pool. Each choice was made on companies left out of the estimate (`validation/joint_errors.py`):
   the central 60% of the errors covers 49–64% of held-out errors depending on size and horizon, and the
@@ -302,7 +341,7 @@ the calibrated fade is fast, and also why the model will undervalue the rare com
   so treating them as the 20th/80th percentiles was close but not exact) and the simulation's standard error.
   The revenue and margin errors are measured; the discount-rate and growth spreads are assumptions; the
   probabilities are conditional on the model and are not calibrated against realised returns (a historical
-  backtest of the signals is future work). The buy and sell zones are thresholds on the model value, not prices
+  backtest, section 7.5, finds the signal weak). The buy and sell zones are thresholds on the model value, not prices
   to trade at. Banks keep the scenario-based fit (a split lognormal through the three scenarios).
 - **Forecast**: reported history and the three scenarios, a statement-style table (actuals vs estimates) and
   CSV export.
@@ -335,8 +374,8 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
   value per share +$0.94; Amazon +$0.06. The worked example in section 8.2 predates this fix (1.0% debt weight).
 - **Market data** comes from Yahoo Finance and can be unavailable or rate-limited.
 
-**Next steps:** an out-of-sample test of the path to profitability, a historical backtest of the final verdict's
-signals against realised returns (point-in-time statements and prices; survivorship bias to control), extending
+**Next steps:** an out-of-sample test of the path to profitability, a survivorship-free rerun of the verdict backtest
+(delisted prices from a point-in-time source), extending
 the equity-based bank engine (live for JPMorgan and Bank of America) to insurers, and segment-weighted betas.
 
 ## 11. Reproducibility

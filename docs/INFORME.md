@@ -213,6 +213,50 @@ valoradas (67%)**, frente a 22 (37%) antes del camino a la rentabilidad y del ad
 dejó de contar como valoradas a empresas sin conteo de acciones en la SEC antes de correr el modelo; un caso
 estaba mal contado.)
 
+### 7.5 ¿Predicen las señales del veredicto los rendimientos? (backtest histórico, noviembre de 2026)
+
+`validation/verdict_backtest.py` reconstruye la valoración del dashboard **a la fecha de cada presentación** para
+las 403 empresas del panel que la calibración dejó fuera (CIK % 5 = 0): los estados solo incluyen hechos presentados
+hasta esa fecha, el precio es el de dos días hábiles después (corregido por splits posteriores), la tasa libre de
+riesgo es el bono del Tesoro a 10 años de ese día, la prima de riesgo es la implícita de Damodaran publicada ese
+año, y el Monte Carlo usa errores estimados solo con empresas de entrenamiento. Resultado medido: rendimiento total
+a 1, 3 y 5 años menos el del S&P 500 (SPY).
+
+1.506 10-K originales (años fiscales de mediados de 2012 a 2020) de 214 empresas; 189 no tienen ninguno (108
+presentan el formulario 20-F y 81 empezaron a cotizar después de 2020). Se valoraron 797 (el resto son rechazos de la
+propia app: etapa de desarrollo, sin EBIT, puente incompleto); 41 se excluyeron como errores de datos (precio
+menor a $1 o valor/precio por encima de 10×, por ejemplo acciones reportadas en miles), y quedan **756 valoraciones
+de 129 empresas**. Las estadísticas son robustas a las colas: mediana del exceso, proporción que supera al SPY y
+media del exceso *logarítmico*, con intervalos del 95% que remuestrean empresas.
+
+| Horizonte | Corr. de rango P(valor > precio) vs exceso | Quintil superior − inferior de P (exceso log) | Comprar: supera al SPY · media log | Vender: supera al SPY · media log |
+|---|---|---|---|---|
+| 1 año | +0,05 [−0,01; +0,13] | +7,4% [−0,9%; +16,5%] | 49% · −5,1% | 43% · −9,8% |
+| 3 años | +0,08 [−0,03; +0,18] | +20,4% [+0,2%; +44,6%] | 42% · −13,4% | 38% · −24,0% |
+| 5 años | +0,03 [−0,08; +0,15] | +26,5% [−2,9%; +62,2%] | 32% · −30,0% | 34% · −41,9% |
+
+Lo que muestra:
+
+- **La señal apunta en la dirección correcta, pero es débil.** Todas las correlaciones de rango son positivas y
+  ninguna está claramente por encima de cero; la razón valor base / precio se comporta igual (+0,07 [0,00; +0,14] a
+  un año, +0,09 a tres).
+- **Identifica sobre todo a los perdedores, no a los ganadores.** La diferencia viene del quintil inferior (P más
+  baja, a menudo con valor del modelo negativo): −13% de exceso log a 1 año, −34% a 3 y −59% a 5. Los otros cuatro
+  quintiles no se distinguen entre sí.
+- **Comprar no le ganó al mercado.** Las señales de compra superaron al SPY el 49%, 42% y 32% de las veces a 1, 3 y
+  5 años. Las de venta lo hicieron peor que las de compra en todos los horizontes, pero los intervalos se solapan.
+- **P(valor > precio) no es la probabilidad de ganarle al mercado.** En el quintil superior (P de 0,75 a 0,99) solo
+  el 47%, 42% y 32% superó al SPY. Por eso la página sigue presentando estas probabilidades como condicionadas al
+  modelo.
+
+Límites de la prueba: el panel se construye con empresas que cotizan hoy (data/sec_companies.csv) y Yahoo no tiene
+precios de tickers que dejaron de cotizar, así que faltan quiebras y adquisiciones (sesgo de supervivencia; empuja
+los rendimientos hacia arriba, y aun así la muestra quedó por debajo del S&P 500, liderado por las megaempresas, en
+una mediana de 35% a cinco años); se usan para todos los años las betas de industria, los diferenciales de
+calificación, los márgenes de industria y la tasa impositiva de largo plazo de 2026 (información del futuro); las
+velocidades de convergencia vienen del panel completo; no hay emisores extranjeros; y 2012–2020 es un solo régimen de
+mercado.
+
 ## 8. Caso de estudio: Microsoft
 
 *Cifras calculadas el 14 de noviembre de 2026; la aplicación en vivo actualiza los datos de mercado, así que los
@@ -300,7 +344,8 @@ sostenga.
   base. Cada simulación toma una trayectoria observada de cinco años de errores de pronóstico de ingresos y
   margen, juntos (`data/joint_errors.json`: 3.925 ventanas de 610 empresas, así se conserva la correlación entre
   ambos errores), una beta ±0,20 y una prima de riesgo ±0,5 puntos (normal), y un crecimiento terminal ±1 punto
-  (triangular, por debajo de la tasa libre de riesgo y 1 punto bajo el WACC simulado). Los errores vienen de
+  (triangular, por debajo de la tasa libre de riesgo, o del crecimiento terminal del usuario si es mayor, y 1 punto
+  bajo el WACC simulado). Los errores vienen de
   empresas del mismo tamaño, escalados por la volatilidad de la propia empresa por debajo de $10 mil millones y
   en puntos a partir de $10 mil millones; las empresas que crecen más de 25% usan un grupo de alto crecimiento.
   Cada decisión se tomó con empresas que quedaron fuera de la estimación (`validation/joint_errors.py`): el 60%
@@ -313,7 +358,7 @@ sostenga.
   (Microsoft: conservador p16, base p57, optimista p84; tratarlos como percentiles 20 y 80 era aproximado, no
   exacto) y el error estándar de la simulación. Los errores de ingresos y margen están medidos; las dispersiones
   de la tasa de descuento y del crecimiento son supuestos; las probabilidades están condicionadas al modelo y no
-  calibradas con rendimientos realizados (un backtest histórico de las señales queda como trabajo futuro). Las
+  calibradas con rendimientos realizados (el backtest histórico de la sección 7.5 encuentra que la señal es débil). Las
   zonas de compra y venta son umbrales sobre el valor del modelo, no precios a los que operar. Los bancos
   mantienen el ajuste por escenarios (una lognormal dividida que pasa por los tres escenarios).
 - **Resumen**: valor intrínseco, precio de mercado y potencial implícito; el rango de conservador a optimista
@@ -353,9 +398,8 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
   la deuda de 1,0%).
 - **Datos de mercado** de Yahoo Finance, que pueden no estar disponibles o tener límites de uso.
 
-**Próximos pasos:** una prueba fuera de muestra del camino a la rentabilidad, un backtest histórico de las señales del
-veredicto final frente a rendimientos realizados (estados y precios de cada fecha; con control del sesgo de
-supervivencia),
+**Próximos pasos:** una prueba fuera de muestra del camino a la rentabilidad, repetir el backtest del veredicto sin
+sesgo de supervivencia (precios de empresas que dejaron de cotizar de una fuente histórica),
 extender el motor bancario basado en el patrimonio (activo para JPMorgan y Bank of America) a las
 aseguradoras, y betas ponderadas por segmento.
 
