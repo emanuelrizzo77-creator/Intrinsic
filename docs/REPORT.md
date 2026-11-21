@@ -287,9 +287,13 @@ the calibrated fade is fast, and also why the model will undervalue the rare com
   solutions or a non-monotone response are reported, never forced, and the residual is shown. These are the
   expectations embedded in the price, not forecasts or a buy/sell signal.
 - **Final verdict**: Buy / Hold / Sell. The three scenarios (20th, 50th and 80th percentile of the model's
-  measured errors) define a lognormal distribution of value per share; Buy is the probability the value exceeds
-  the price by more than a margin of safety (15% by default, editable), Sell the probability it falls short by
-  more than that margin, Hold the rest. Buy or Sell is shown only when it holds a majority of outcomes, otherwise
+  measured errors) define a split lognormal distribution of value per share: base is the median and each side has
+  its own spread, so the fit passes exactly through all three scenarios even when they are asymmetric (until
+  November 2026 a single spread placed Microsoft's scenarios at the 15th and 75th percentiles). Buy is the share
+  of outcomes where the value exceeds the price by more than a margin of safety (15% by default, editable), Sell
+  where it falls short by more than that margin, Hold the rest. The buy and sell zones are thresholds on the model
+  value, not prices to trade at; the page also shows the price that keeps the margin of safety on the base value.
+  These are probabilities conditional on the model's assumptions, not calibrated against realised returns. Buy or Sell is shown only when it holds a majority of outcomes, otherwise
   Hold; the split is drawn as a segmented bar and over the value distribution, with the reasons behind it. The
   spread excludes discount-rate and terminal-growth uncertainty, so it understates real uncertainty. It states
   what the model's numbers say, not investment advice.

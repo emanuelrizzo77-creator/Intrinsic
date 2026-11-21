@@ -212,6 +212,24 @@ ES = {
     '"Your input".':
         'Precargados con los valores del Modelo 27. Cambia cualquier número para correr tu propio caso; los datos '
         'cambiados se marcan como "Tu dato".',
+    # ---- verdict audit (November 2026)
+    'Excess return vs CAPM': 'Exceso de rendimiento frente a CAPM',
+    'implied − required (cost of equity)':
+        'implícito − requerido (costo del patrimonio)',
+    'Share of model outcomes in each zone':
+        'Parte de los resultados del modelo en cada zona',
+    "Conditional on the model's assumptions: not the probability that the share price rises or falls":
+        'Condicionado a los supuestos del modelo: no es la probabilidad de que el precio de la acción suba o baje',
+    'Buy zone: model value above':
+        'Zona de compra: valor del modelo por encima de',
+    'Sell zone: model value below':
+        'Zona de venta: valor del modelo por debajo de',
+    'Model-conditional probability that value exceeds the price':
+        'Probabilidad, condicionada al modelo, de que el valor supere el precio',
+    'Price that keeps a {m:.0%} margin of safety on the base value':
+        'Precio que conserva un margen de seguridad de {m:.0%} sobre el valor base',
+    "Probabilities are conditional on the model's assumptions: base is the median and the conservative and optimistic cases are placed at the 20th and 80th percentiles. They are not calibrated against realised returns. The buy and sell zones are thresholds on the model value (market price ± the margin), not prices to trade at.":
+        'Las probabilidades están condicionadas a los supuestos del modelo: el caso base es la mediana y el conservador y el optimista se ubican en los percentiles 20 y 80. No están calibradas con rendimientos realizados. Las zonas de compra y venta son umbrales sobre el valor del modelo (precio de mercado ± el margen), no precios a los que operar.',
     # ---- reverse DCF
     '{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: {n}-year CAGR {c:.1%}':
         '{pp:+.1f} pp al año en los años 1–5, bajando a 0 en el año {n}: CAGR a {n} años de {c:.1%}',
@@ -433,9 +451,9 @@ ES = {
     '<strong>Loss-making company:</strong> includes a {p:.0%} probability of failure.':
         '<strong>Empresa con pérdidas:</strong> incluye una probabilidad de quiebra de {p:.0%}.',
     "<strong>Risk and return:</strong> buying at today's price implies a {i:.1%} return against the {r:.1%} its risk "
-    "requires (alpha {a:+.1%}).":
+    "requires ({a:+.1%} vs CAPM).":
         '<strong>Riesgo y rendimiento:</strong> comprar al precio de hoy implica un rendimiento de {i:.1%} frente al '
-        '{r:.1%} que exige su riesgo (alfa {a:+.1%}).',
+        '{r:.1%} que exige su riesgo ({a:+.1%} frente a CAPM).',
     '<strong>Data quality:</strong> some inputs are estimated or adjusted (see Model &amp; Data); treat the verdict '
     'with extra caution.':
         '<strong>Calidad de datos:</strong> algunos datos son estimados o ajustados (ver Modelo y datos); toma el '
@@ -656,13 +674,13 @@ ES = {
         'Sin rendimiento implícito: el precio de mercado está fuera de los valores que el modelo produce con una tasa '
         'de descuento entre el crecimiento terminal y 40%.',
     'Above the line: at {mp} the stock offers more return than CAPM requires for its beta — it looks undervalued for '
-    'its risk.':
+    'its risk, if the forecast comes true.':
         'Sobre la línea: a {mp} la acción ofrece más rendimiento del que CAPM exige para su beta — parece '
-        'infravalorada para su riesgo.',
+        'infravalorada para su riesgo, si se cumple la proyección.',
     'Below the line: at {mp} the stock offers less return than CAPM requires for its beta — it looks overvalued for '
-    'its risk.':
+    'its risk, if the forecast comes true.':
         'Bajo la línea: a {mp} la acción ofrece menos rendimiento del que CAPM exige para su beta — parece '
-        'sobrevalorada para su riesgo.',
+        'sobrevalorada para su riesgo, si se cumple la proyección.',
     "Implied return = cost of equity that makes the DCF value equal the market price (implied WACC {w}, capital weights "
     "held at market values). The beta that would justify today's price is {bi:.2f}.":
         'Rendimiento implícito = costo del patrimonio con el que el valor DCF iguala el precio de mercado (WACC implícito '
@@ -930,8 +948,13 @@ GLOSSARY_ES = {
     'Required return': ('Rendimiento requerido', 'Rendimiento que exigen los inversionistas por el riesgo de la acción: '
                         'el costo del patrimonio según CAPM, un punto sobre la recta.'),
     'Implied return': ('Rendimiento implícito', 'Costo del patrimonio con el que el valor DCF iguala el precio de mercado '
-                       'actual: lo que se gana comprando a ese precio si se cumple la proyección.'),
-    'Alpha': ('Alfa', 'Rendimiento implícito − requerido. Positivo (sobre la recta) = barata para su riesgo; negativo = cara.'),
+                       'actual: lo que se gana comprando a ese precio si se cumple la proyección. Se obtiene resolviendo '
+                       'la valoración para la tasa de descuento; en empresas no financieras, el WACC implícito se '
+                       'convierte en costo del patrimonio manteniendo fijos los pesos a valor de mercado del WACC.'),
+    'Excess return vs CAPM': ('Exceso de rendimiento frente a CAPM', 'Rendimiento implícito − requerido, ambos costos del '
+                              'patrimonio. Positivo (sobre la recta) = barata para su riesgo; negativo = cara. Es una '
+                              'diferencia ex ante condicionada a la proyección, no el alfa de Jensen, que se mide con '
+                              'rendimientos realizados.'),
     'Intrinsic value': ('Valor intrínseco', 'Valor justo estimado por acción: valor presente de los flujos de caja '
                         'libres proyectados más el valor terminal, menos la deuda neta, dividido por las acciones diluidas.'),
     'Market price': ('Precio de mercado', 'Referencia actual del precio de la acción (Yahoo Finance o tu dato manual).'),

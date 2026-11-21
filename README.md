@@ -181,7 +181,7 @@ intrinsic/              valuation engine
   ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests (139), including translation coverage
+tests/                  unit tests (154), including translation coverage
 docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```

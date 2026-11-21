@@ -92,17 +92,27 @@ def render_verdict(prices, market_price, reasons, key, chart):
           f'<div class="ix-hero-cell" style="grid-column: span 2">{ui.tag(t("What it means"), "plain")}'
           f'<div class="ix-big-sub" style="font-size:.95rem;margin-top:10px">{t(ACTION_MEANING[a])}</div></div>'
           f'</div></div>')
-    chart(_segmented_bar(probs), 'Probability of each verdict',
-          'Share of the model\'s value distribution in each zone', key=f'verdict-split-{key}')
+    chart(_segmented_bar(probs), 'Share of model outcomes in each zone',
+          'Conditional on the model\'s assumptions: not the probability that the share price rises or falls',
+          key=f'verdict-split-{key}')
     chart(_distribution_chart(v, prices.get('base')), 'Where the probabilities come from',
           'Model value distribution from the conservative, base and optimistic scenarios, split at the market price '
           '± the margin of safety', key=f'verdict-dist-{key}')
-    rows = [(t('Buy if value is above'), ui.usd(v['buy_above'])), (t('Sell if value is below'), ui.usd(v['sell_below'])),
-            (t('Probability value is above the market price'), f"{v['prob_above_market']:.0%}")]
+    # Classification thresholds on the model VALUE (A), not recommended prices; B is shown separately.
+    rows = [(t('Buy zone: model value above'), ui.usd(v['buy_above'])),
+            (t('Sell zone: model value below'), ui.usd(v['sell_below'])),
+            (t('Model-conditional probability that value exceeds the price'), f"{v['prob_above_market']:.0%}")]
+    if v.get('price_with_margin'):
+        rows.append((t('Price that keeps a {m:.0%} margin of safety on the base value', m=v['margin']),
+                     ui.usd(v['price_with_margin'])))
     ui.md('<div class="ix-note"><div class="ix-label">' + t('Why') + '</div><ul>'
           + ''.join(f'<li>{r}</li>' for r in reasons) + '</ul>'
           + '<div class="ix-state" style="margin-top:10px">' + ui.kv_rows(rows) + '</div></div>')
     notes = [t('This is what the model\'s numbers say, not investment advice or a recommendation for your portfolio.'),
+             t('Probabilities are conditional on the model\'s assumptions: base is the median and the conservative and '
+               'optimistic cases are placed at the 20th and 80th percentiles. They are not calibrated against realised '
+               'returns. The buy and sell zones are thresholds on the model value (market price ± the margin), not '
+               'prices to trade at.'),
              t('The spread comes from the model\'s conservative and optimistic scenarios; uncertainty in the discount '
                'rate and terminal growth is not included, so real outcomes are wider.')]
     if v['one_sided']:

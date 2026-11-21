@@ -327,7 +327,7 @@ def _risk_return(data, scen, g, shares, overrides, price, capm):
     ui.heading(t('Security Market Line'),
                t('{scen} scenario · CAPM required return vs the return implied by the market price',
                  scen=escape(scenario(scen))))
-    _glossary(['Security Market Line', 'Beta', 'Required return', 'Implied return', 'Alpha'])
+    _glossary(['Security Market Line', 'Beta', 'Required return', 'Implied return', 'Excess return vs CAPM'])
     rf, beta, erp = capm['risk_free_rate'], capm['beta'], capm['equity_risk_premium']
     required = sml.required_return(rf, beta, erp)
 
@@ -345,7 +345,8 @@ def _risk_return(data, scen, g, shares, overrides, price, capm):
                       t('{rf} + {b:.2f} × {erp}', rf=ui.pct(rf), b=beta, erp=ui.pct(erp)), 'model', _help('Required return'))
           + ui.metric(t('Implied return'), ui.pct(implied), t('at market price {mp}', mp=ui.usd(price)), '',
                       _help('Implied return'))
-          + ui.metric(t('Alpha'), ui.pct(alpha, signed=True), t('implied − required'), a_cls, _help('Alpha'))
+          + ui.metric(t('Excess return vs CAPM'), ui.pct(alpha, signed=True), t('implied − required (cost of equity)'),
+                      a_cls, _help('Excess return vs CAPM'))
           + '</div>')
     pts = [beta, 1.0] + ([b_implied] if b_implied is not None else [])
     beta_max = min(max(2.0, max(pts) * 1.25), 4.0)
@@ -383,9 +384,9 @@ def _risk_return(data, scen, g, shares, overrides, price, capm):
                      'cost of equity between terminal growth and 40%.'))
     else:
         verdict = (t('Above the line: at {mp} the stock offers more return than CAPM requires for its beta — it looks '
-                     'undervalued for its risk.', mp=ui.usd(price)) if alpha >= 0 else
+                     'undervalued for its risk, if the forecast comes true.', mp=ui.usd(price)) if alpha >= 0 else
                    t('Below the line: at {mp} the stock offers less return than CAPM requires for its beta — it looks '
-                     'overvalued for its risk.', mp=ui.usd(price)))
+                     'overvalued for its risk, if the forecast comes true.', mp=ui.usd(price)))
         st.caption(verdict + ' ' + t('Implied return = cost of equity at which the excess-return value equals the market '
                                      'price. The beta that would justify today\'s price is {bi:.2f}.', bi=b_implied))
 

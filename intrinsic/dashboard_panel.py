@@ -96,8 +96,12 @@ GLOSSARY = {
     'Beta': 'Sensitivity of the stock to the market. Beta 1 moves with the market; above 1 amplifies it.',
     'Required return': 'Return investors demand for the stock\'s risk: the CAPM cost of equity, a point on the line.',
     'Implied return': 'Cost of equity at which the DCF value equals today\'s market price: the return earned buying '
-                      'at the market price if the forecast comes true.',
-    'Alpha': 'Implied return − required return. Positive (above the line) = cheap for its risk; negative = expensive.',
+                      'at the market price if the forecast comes true. Found by solving the valuation for the discount rate; for '
+                      'non-financial companies the implied WACC is converted to a cost of equity with the WACC\'s '
+                      'market-value weights held fixed.',
+    'Excess return vs CAPM': 'Implied return − required return, both costs of equity. Positive (above the line) = cheap '
+                             'for its risk; negative = expensive. An ex-ante gap conditional on the forecast, not '
+                             'Jensen\'s alpha, which is measured on realised returns.',
     'Excess return model': 'Bank value = common book value + present value of future profits above the cost of equity '
                            '((ROE − Ke) × book value).',
     'Dividend discount model': 'Bank value = present value of dividends and buybacks to common shareholders, in two '
@@ -673,7 +677,7 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
     ui.heading(t('Security Market Line'),
                t('{scen} scenario · CAPM required return vs the return implied by the market price',
                  scen=escape(scenario(scen))))
-    _glossary(['Security Market Line', 'Beta', 'Required return', 'Implied return', 'Alpha'])
+    _glossary(['Security Market Line', 'Beta', 'Required return', 'Implied return', 'Excess return vs CAPM'])
     if not capm:
         ui.state_card(t('Needs the automatic discount rate'),
                       t('The Security Market Line is built from the beta, risk-free rate and equity risk premium. '
@@ -702,7 +706,8 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
                       t('{rf} + {b:.2f} × {erp}', rf=ui.pct(rf), b=beta, erp=ui.pct(erp)), 'model', _help('Required return'))
           + ui.metric(t('Implied return'), ui.pct(implied), t('at market price {mp}', mp=ui.usd(market_price)), '',
                       _help('Implied return'))
-          + ui.metric(t('Alpha'), ui.pct(alpha, signed=True), t('implied − required'), a_cls, _help('Alpha'))
+          + ui.metric(t('Excess return vs CAPM'), ui.pct(alpha, signed=True), t('implied − required (cost of equity)'),
+                      a_cls, _help('Excess return vs CAPM'))
           + '</div>')
 
     pts = [beta, 1.0] + ([b_implied] if b_implied is not None else [])
@@ -729,7 +734,7 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
         fig.add_trace(go.Scatter(x=[beta], y=[implied * 100], mode='markers', name=t('Implied return'),
                                  marker=dict(size=13, color=col, symbol='circle-open', line=dict(width=3)),
                                  hovertemplate=t('Implied return') + '<br>β %{x:.2f} · %{y:.2f}%<extra></extra>'))
-        fig.add_annotation(x=beta, y=(required + implied) / 2 * 100, text=f'α {alpha * 100:+.2f}%', showarrow=False,
+        fig.add_annotation(x=beta, y=(required + implied) / 2 * 100, text=f'{alpha * 100:+.2f} pp', showarrow=False,
                            xanchor='left', xshift=10, font=dict(size=12, color=col, family="'IBM Plex Mono', monospace"))
     fig.update_layout(template='intrinsic', height=440, hovermode='closest', xaxis_title='Beta (β)',
                       yaxis_title=t('Expected return (%)'),
@@ -742,9 +747,9 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
                      'between terminal growth and 40%.'))
     else:
         verdict = (t('Above the line: at {mp} the stock offers more return than CAPM requires for its beta — it looks '
-                     'undervalued for its risk.', mp=ui.usd(market_price)) if alpha >= 0 else
+                     'undervalued for its risk, if the forecast comes true.', mp=ui.usd(market_price)) if alpha >= 0 else
                    t('Below the line: at {mp} the stock offers less return than CAPM requires for its beta — it looks '
-                     'overvalued for its risk.', mp=ui.usd(market_price)))
+                     'overvalued for its risk, if the forecast comes true.', mp=ui.usd(market_price)))
         st.caption(verdict + ' ' + t('Implied return = cost of equity that makes the DCF value equal the market price '
                                      '(implied WACC {w}, capital weights held at market values). The beta that would '
                                      'justify today\'s price is {bi:.2f}.', w=ui.pct(implied_w), bi=b_implied))
@@ -785,7 +790,7 @@ def _final_verdict(ticker, results, data, market_price, g, overrides, ctx):
             ke = sml.implied_cost_of_equity(iw, capm['after_tax_cost_of_debt'], capm['equity_weight'], capm['debt_weight'])
             req = sml.required_return(capm['risk_free_rate'], capm['beta'], capm['equity_risk_premium'])
             reasons.append(t('<strong>Risk and return:</strong> buying at today\'s price implies a {i:.1%} return '
-                             'against the {r:.1%} its risk requires (alpha {a:+.1%}).', i=ke, r=req, a=ke - req))
+                             'against the {r:.1%} its risk requires ({a:+.1%} vs CAPM).', i=ke, r=req, a=ke - req))
     if base.get('status') == 'DEGRADED':
         reasons.append(t('<strong>Data quality:</strong> some inputs are estimated or adjusted (see Model &amp; Data); '
                          'treat the verdict with extra caution.'))

@@ -297,9 +297,14 @@ sostenga.
   intervalo. Si no hay solución, hay varias o la respuesta no es monótona, se informa sin forzarla, y se muestra
   el error residual. Son las expectativas incorporadas en el precio, no pronósticos ni una señal de compra o venta.
 - **Veredicto final**: Comprar / Mantener / Vender. Los tres escenarios (percentiles 20, 50 y 80 de los
-  errores medidos del modelo) definen una distribución lognormal del valor por acción; Comprar es la probabilidad
-  de que el valor supere el precio en más que un margen de seguridad (15% por defecto, editable), Vender la de que
-  quede por debajo en más que ese margen, y Mantener el resto. Comprar o Vender solo se muestran cuando reúnen la
+  errores medidos del modelo) definen una distribución lognormal dividida del valor por acción: el caso base es la
+  mediana y cada lado tiene su propia dispersión, así que el ajuste pasa exactamente por los tres escenarios aunque
+  sean asimétricos (hasta noviembre de 2026 una sola dispersión ubicaba los escenarios de Microsoft en los
+  percentiles 15 y 75). Comprar es la parte de los resultados en que el valor supera el precio en más que un margen
+  de seguridad (15% por defecto, editable), Vender aquella en que queda por debajo en más que ese margen, y
+  Mantener el resto. Las zonas de compra y venta son umbrales sobre el valor del modelo, no precios a los que
+  operar; la página muestra además el precio que conserva el margen de seguridad sobre el valor base. Son
+  probabilidades condicionadas a los supuestos del modelo, no calibradas con rendimientos realizados. Comprar o Vender solo se muestran cuando reúnen la
   mayoría de los resultados; si no, Mantener. La división se dibuja como barra segmentada y sobre la distribución
   del valor, con las razones detrás. La dispersión no incluye la incertidumbre de la tasa de descuento ni del
   crecimiento terminal, así que subestima la incertidumbre real. Dice lo que muestran los números del modelo, no
