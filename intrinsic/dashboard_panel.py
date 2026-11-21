@@ -97,8 +97,8 @@ GLOSSARY = {
     'Required return': 'Return investors demand for the stock\'s risk: the CAPM cost of equity, a point on the line.',
     'Implied return': 'Cost of equity at which the DCF value equals today\'s market price: the return earned buying '
                       'at the market price if the forecast comes true. Found by solving the valuation for the discount rate; for '
-                      'non-financial companies the implied WACC is converted to a cost of equity with the WACC\'s '
-                      'market-value weights held fixed.',
+                      'non-financial companies the implied WACC is converted to a cost of equity with equity weighted at '
+                      'the market price × diluted shares, which is exactly the DCF equity value at that rate.',
     'Excess return vs CAPM': 'Implied return − required return, both costs of equity. Positive (above the line) = cheap '
                              'for its risk; negative = expensive. An ex-ante gap conditional on the forecast, not '
                              'Jensen\'s alpha, which is measured on realised returns.',
@@ -673,6 +673,13 @@ def _sensitivity(data, scen, wacc, g, overrides, market_price, ticker):
                        file_name=f'intrinsic_{ticker.lower()}_sensitivity_{scen}.csv', mime='text/csv')
 
 
+def _implied_weights(capm, market_price, br):
+    """Capital weights consistent with the implied WACC: equity at market price x the DCF's diluted shares (exactly
+    the DCF equity value at the solution), debt at the WACC's book value. Falls back to the WACC's own weights."""
+    w = sml.weights_at_price(market_price, br.get('shares'), capm.get('total_debt'))
+    return w if w else (capm['equity_weight'], capm['debt_weight'])
+
+
 def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
     ui.heading(t('Security Market Line'),
                t('{scen} scenario · CAPM required return vs the return implied by the market price',
@@ -694,8 +701,9 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
         return _price(out)
 
     implied_w = _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at)
-    implied = (sml.implied_cost_of_equity(implied_w, capm['after_tax_cost_of_debt'], capm['equity_weight'],
-                                          capm['debt_weight']) if implied_w is not None else None)
+    we, wd = _implied_weights(capm, market_price, br)
+    implied = (sml.implied_cost_of_equity(implied_w, capm['after_tax_cost_of_debt'], we, wd)
+               if implied_w is not None else None)
     alpha = implied - required if implied is not None else None
     b_implied = sml.implied_beta(implied, rf, erp)
 
@@ -751,7 +759,7 @@ def _risk_return(ticker, scen, data, g, overrides, market_price, capm):
                    t('Below the line: at {mp} the stock offers less return than CAPM requires for its beta — it looks '
                      'overvalued for its risk, if the forecast comes true.', mp=ui.usd(market_price)))
         st.caption(verdict + ' ' + t('Implied return = cost of equity that makes the DCF value equal the market price '
-                                     '(implied WACC {w}, capital weights held at market values). The beta that would '
+                                     '(implied WACC {w}, capital weights at the market price). The beta that would '
                                      'justify today\'s price is {bi:.2f}.', w=ui.pct(implied_w), bi=b_implied))
 
 
@@ -787,7 +795,8 @@ def _final_verdict(ticker, results, data, market_price, g, overrides, ctx):
             return _price(out)
         iw = _implied_wacc(ticker, data, 'base', g, overrides, market_price, value_at)
         if iw is not None:
-            ke = sml.implied_cost_of_equity(iw, capm['after_tax_cost_of_debt'], capm['equity_weight'], capm['debt_weight'])
+            we, wd = _implied_weights(capm, market_price, br)
+            ke = sml.implied_cost_of_equity(iw, capm['after_tax_cost_of_debt'], we, wd)
             req = sml.required_return(capm['risk_free_rate'], capm['beta'], capm['equity_risk_premium'])
             reasons.append(t('<strong>Risk and return:</strong> buying at today\'s price implies a {i:.1%} return '
                              'against the {r:.1%} its risk requires ({a:+.1%} vs CAPM).', i=ke, r=req, a=ke - req))
@@ -796,7 +805,24 @@ def _final_verdict(ticker, results, data, market_price, g, overrides, ctx):
                          'treat the verdict with extra caution.'))
     if data.get('foreign'):
         reasons.append(t('<strong>Foreign filer:</strong> figures converted to US GAAP / USD from its Form 20-F.'))
-    render_verdict(prices, market_price, reasons, ticker, _chart)
+    render_verdict(prices, market_price, reasons, ticker, _chart, simulation=_simulation(ticker, results, data, ctx))
+
+
+def _simulation(ticker, results, data, ctx):
+    """Monte Carlo of the base valuation (cached per inputs for the session). None when it cannot be built."""
+    from intrinsic import value_simulation as vs
+    base, br, capm = results['base'], data['bridge'], ctx.get('capm')
+    if 'valuation' not in base:
+        return None
+    d = base['assumptions']['drivers']
+    key = (ticker, br['net_debt'], br['shares'], round(base['valuation']['intrinsic_price'], 8),
+           json.dumps({k: x['value'] for k, x in d.items() if not isinstance(x['value'], list)}, sort_keys=True,
+                      default=str),
+           json.dumps(capm or {}, sort_keys=True, default=str))
+    cache = st.session_state.setdefault('ix_sim_cache', {})
+    if key not in cache:
+        cache[key] = vs.simulate(base, data['history'], net_debt=br['net_debt'], shares=br['shares'], capm=capm)
+    return cache[key]
 
 
 def _implied_wacc(ticker, data, scen, g, overrides, market_price, value_at):

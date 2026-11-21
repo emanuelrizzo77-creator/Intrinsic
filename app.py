@@ -414,6 +414,7 @@ if wacc_mode == "Automatic Calculation":
         "after_tax_cost_of_debt": wacc_result["after_tax_cost_of_debt"],
         "equity_weight": wacc_result["equity_weight"],
         "debt_weight": wacc_result["debt_weight"],
+        "total_debt": total_debt,
         "beta_source": (_bu["industry"] if beta_basis != _REGRESSION and _bu.get("beta") is not None
                         else t("stock regression (Blume)")),
     }

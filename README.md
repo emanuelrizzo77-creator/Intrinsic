@@ -167,6 +167,8 @@ intrinsic/              valuation engine
   inputs.py             load and audit a company's SEC history and net-debt bridge
   forecast.py           driver model, terminal value, valuation, consistency checks
   reverse_dcf.py        implied growth, margin and WACC that reproduce the market price (same engine)
+  value_simulation.py   Monte Carlo of the base valuation for the Final verdict (joint errors, WACC, growth)
+  verdict.py, sml.py    verdict probabilities; Security Market Line and implied return
   sec_data.py           cached SEC EDGAR access, annual facts as originally reported
   sec_history.py        historical statements from XBRL tags
   balance_sheet.py      balance-sheet normalisation
@@ -181,7 +183,7 @@ intrinsic/              valuation engine
   ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests (154), including translation coverage
+tests/                  unit tests (167), including translation coverage
 docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```

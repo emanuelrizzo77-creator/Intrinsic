@@ -213,6 +213,22 @@ ES = {
         'Precargados con los valores del Modelo 27. Cambia cualquier número para correr tu propio caso; los datos '
         'cambiados se marcan como "Tu dato".',
     # ---- verdict audit (November 2026)
+    'Monte Carlo distribution of the model value (1,000 valuations), split at the market price ± the margin of safety':
+        'Distribución Monte Carlo del valor del modelo (1.000 valoraciones), dividida en el precio de mercado ± el margen de seguridad',
+    'Where the scenarios fall in the simulation':
+        'Dónde caen los escenarios en la simulación',
+    'conservative p{c:.0f} · base p{b:.0f} · optimistic p{o:.0f}':
+        'conservador p{c:.0f} · base p{b:.0f} · optimista p{o:.0f}',
+    'Simulation precision':
+        'Precisión de la simulación',
+    '{n:,} valuations · ±{se:.1f} points on the verdict share':
+        '{n:,} valoraciones · ±{se:.1f} puntos en la proporción del veredicto',
+    'Each of the 1,000 valuations re-runs the base case with a revenue and margin path drawn from errors measured on 610 companies (validated on companies left out of the estimate), a beta ±{b:.2f}, an equity risk premium ±{e:.1f} points and terminal growth ±{g:.0f} point. The revenue and margin errors are measured; the discount-rate and growth spreads are assumptions.':
+        'Cada una de las 1.000 valoraciones repite el caso base con una trayectoria de ingresos y margen tomada de errores medidos en 610 empresas (validados con empresas que quedaron fuera de la estimación), una beta ±{b:.2f}, una prima de riesgo ±{e:.1f} puntos y un crecimiento terminal ±{g:.0f} punto. Los errores de ingresos y margen están medidos; las dispersiones de la tasa de descuento y del crecimiento son supuestos.',
+    'Each of the 1,000 valuations re-runs the base case with a revenue and margin path drawn from errors measured on 610 companies (validated on companies left out of the estimate), a WACC ±{w:.0f} point (manual discount rate) and terminal growth ±{g:.0f} point. The revenue and margin errors are measured; the discount-rate and growth spreads are assumptions.':
+        'Cada una de las 1.000 valoraciones repite el caso base con una trayectoria de ingresos y margen tomada de errores medidos en 610 empresas (validados con empresas que quedaron fuera de la estimación), un WACC ±{w:.0f} punto (tasa de descuento manual) y un crecimiento terminal ±{g:.0f} punto. Los errores de ingresos y margen están medidos; las dispersiones de la tasa de descuento y del crecimiento son supuestos.',
+    'Probabilities are conditional on the model and not calibrated against realised returns. The buy and sell zones are thresholds on the model value (market price ± the margin), not prices to trade at.':
+        'Las probabilidades están condicionadas al modelo y no calibradas con rendimientos realizados. Las zonas de compra y venta son umbrales sobre el valor del modelo (precio de mercado ± el margen), no precios a los que operar.',
     'Excess return vs CAPM': 'Exceso de rendimiento frente a CAPM',
     'implied − required (cost of equity)':
         'implícito − requerido (costo del patrimonio)',
@@ -682,9 +698,9 @@ ES = {
         'Bajo la línea: a {mp} la acción ofrece menos rendimiento del que CAPM exige para su beta — parece '
         'sobrevalorada para su riesgo, si se cumple la proyección.',
     "Implied return = cost of equity that makes the DCF value equal the market price (implied WACC {w}, capital weights "
-    "held at market values). The beta that would justify today's price is {bi:.2f}.":
+    "at the market price). The beta that would justify today's price is {bi:.2f}.":
         'Rendimiento implícito = costo del patrimonio con el que el valor DCF iguala el precio de mercado (WACC implícito '
-        '{w}, pesos de capital a valor de mercado). La beta que justificaría el precio actual es {bi:.2f}.',
+        '{w}, pesos de capital al precio de mercado). La beta que justificaría el precio actual es {bi:.2f}.',
     'Scenario': 'Escenario',
     'Conservative': 'Conservador',
     'Base': 'Base',
@@ -950,7 +966,8 @@ GLOSSARY_ES = {
     'Implied return': ('Rendimiento implícito', 'Costo del patrimonio con el que el valor DCF iguala el precio de mercado '
                        'actual: lo que se gana comprando a ese precio si se cumple la proyección. Se obtiene resolviendo '
                        'la valoración para la tasa de descuento; en empresas no financieras, el WACC implícito se '
-                       'convierte en costo del patrimonio manteniendo fijos los pesos a valor de mercado del WACC.'),
+                       'convierte en costo del patrimonio ponderando el patrimonio al precio de mercado × acciones diluidas, que '
+                       'es exactamente el valor DCF del patrimonio a esa tasa.'),
     'Excess return vs CAPM': ('Exceso de rendimiento frente a CAPM', 'Rendimiento implícito − requerido, ambos costos del '
                               'patrimonio. Positivo (sobre la recta) = barata para su riesgo; negativo = cara. Es una '
                               'diferencia ex ante condicionada a la proyección, no el alfa de Jensen, que se mide con '

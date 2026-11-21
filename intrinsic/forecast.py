@@ -94,6 +94,27 @@ def growth_premium_weight(t, horizon):
     return 1.0 - min(max((t - half) / (horizon - half), 0.0), 1.0)
 
 
+def company_volatility(history, calibration):
+    """(growth sigma, margin sigma, high_growth) that scale the calibrated error bands, or None with < 3 years.
+
+    Same definition as the calibration panel: population sd of the last 9 growth rates and 10 margins, floored and
+    capped (SIGMA_CAPS)."""
+    from statistics import pstdev
+    cal = calibration or {}
+    h = sorted(history, key=lambda r: r['Fiscal year end'])
+    floors = cal.get('sigma_floors', {'growth': 0.03, 'margin': 0.01})
+    gs = [r['Revenue growth'] for r in h if is_number(r.get('Revenue growth'))][-9:]
+    ms = [r.get('EBITA margin', r.get('EBIT margin')) for r in h
+          if is_number(r.get('EBITA margin', r.get('EBIT margin')))][-10:]
+    if len(gs) < 3 or len(ms) < 3:
+        return None
+    g0 = h[-1].get('Revenue growth')
+    high_t = (cal.get('growth_fade_high') or {}).get('threshold', 0.25)
+    return (min(SIGMA_CAPS['growth'], max(floors['growth'], pstdev(gs))),
+            min(SIGMA_CAPS['margin'], max(floors['margin'], pstdev(ms))),
+            is_number(g0) and g0 > high_t)
+
+
 def size_bucket(revenue):
     for limit, name in SIZE_BUCKETS:
         if revenue < limit:
@@ -391,18 +412,12 @@ def derive_assumptions(history, *, wacc, terminal_growth, scenario='base',
 
     bands = cal.get('scenario_bands') or {}
     scaled = cal.get('scenario_bands_scaled') or {}
-    from statistics import pstdev
-    floors = cal.get('sigma_floors', {'growth': 0.03, 'margin': 0.01})
-    gs = [r['Revenue growth'] for r in h if is_number(r.get('Revenue growth'))][-9:]
-    ms = [r.get('EBITA margin', r.get('EBIT margin')) for r in h
-          if is_number(r.get('EBITA margin', r.get('EBIT margin')))][-10:]
-    if scenario != 'base' and scaled and len(gs) >= 3 and len(ms) >= 3:
+    vol = company_volatility(h, cal)
+    if scenario != 'base' and scaled and vol:
         # Bands scaled by the company's own volatility: z-quantiles x company sigma.
-        high_t = (cal.get('growth_fade_high') or {}).get('threshold', 0.25)
-        group = 'high_growth' if (is_number(g0) and g0 > high_t and 'high_growth' in scaled) else 'all'
+        sg, sm, high = vol
+        group = 'high_growth' if (high and 'high_growth' in scaled) else 'all'
         k = 0 if scenario == 'conservative' else 1
-        sg = min(SIGMA_CAPS['growth'], max(floors['growth'], pstdev(gs)))
-        sm = min(SIGMA_CAPS['margin'], max(floors['margin'], pstdev(ms)))
         tbl = scaled[group]
         d['revenue_band'] = _drv([tbl[str(i)]['revenue_z'][k] * sg for i in range(1, 6)], 'calibrated',
                                  f'{scenario}: p{20 if k == 0 else 80} revenue error scaled by company growth '

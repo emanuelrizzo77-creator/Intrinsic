@@ -55,6 +55,19 @@ def implied_wacc(value_at, market_price, lo, hi=0.40, tol=1e-6, max_iter=80):
     return (lo + hi) / 2
 
 
+def weights_at_price(market_price, shares, debt):
+    """(equity weight, debt weight) with equity valued at the market price x the DCF's diluted shares.
+
+    At the implied WACC the DCF equity value equals exactly market price x shares, so these weights are the ones
+    consistent with the solution (no circularity left). Debt stays at book value (the WACC's own debt)."""
+    if not all(isinstance(x, (int, float)) and math.isfinite(x) for x in (market_price, shares, debt)):
+        return None
+    e = market_price * shares
+    if e <= 0 or debt < 0:
+        return None
+    return e / (e + debt), debt / (e + debt)
+
+
 def implied_cost_of_equity(wacc, after_tax_cost_of_debt, equity_weight, debt_weight):
     """Back out Ke from WACC = We * Ke + Wd * Kd(1 - t), holding the weights fixed."""
     if equity_weight <= 0:

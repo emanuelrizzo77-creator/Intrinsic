@@ -286,17 +286,24 @@ the calibrated fade is fast, and also why the model will undervalue the rare com
   first; Brent's method (`scipy.optimize.brentq`) then solves inside a single bracket. No solution, several
   solutions or a non-monotone response are reported, never forced, and the residual is shown. These are the
   expectations embedded in the price, not forecasts or a buy/sell signal.
-- **Final verdict**: Buy / Hold / Sell. The three scenarios (20th, 50th and 80th percentile of the model's
-  measured errors) define a split lognormal distribution of value per share: base is the median and each side has
-  its own spread, so the fit passes exactly through all three scenarios even when they are asymmetric (until
-  November 2026 a single spread placed Microsoft's scenarios at the 15th and 75th percentiles). Buy is the share
-  of outcomes where the value exceeds the price by more than a margin of safety (15% by default, editable), Sell
-  where it falls short by more than that margin, Hold the rest. The buy and sell zones are thresholds on the model
-  value, not prices to trade at; the page also shows the price that keeps the margin of safety on the base value.
-  These are probabilities conditional on the model's assumptions, not calibrated against realised returns. Buy or Sell is shown only when it holds a majority of outcomes, otherwise
-  Hold; the split is drawn as a segmented bar and over the value distribution, with the reasons behind it. The
-  spread excludes discount-rate and terminal-growth uncertainty, so it understates real uncertainty. It states
-  what the model's numbers say, not investment advice.
+- **Final verdict**: Buy / Hold / Sell from a **Monte Carlo** of 1,000 valuations of the base case. Each draw
+  takes one jointly observed five-year path of revenue and margin forecast errors (`data/joint_errors.json`:
+  3,925 windows from 610 companies, so the correlation between revenue and margin errors is kept), a beta
+  ±0.20 and an equity risk premium ±0.5 points (normal), and terminal growth ±1 point (triangular, below the
+  risk-free rate and 1 point under the drawn WACC). Errors come from companies of the same size, scaled by the
+  company's own volatility below $10B and in raw points at $10B and above; companies growing more than 25% use
+  a high-growth pool. Each choice was made on companies left out of the estimate (`validation/joint_errors.py`):
+  the central 60% of the errors covers 49–64% of held-out errors depending on size and horizon, and the
+  "revenue and margin both bad" corner occurs in 8.5% of held-out windows against 4% if they were
+  independent. After year 5 the margin shift kept is the median of years 3–5, so a one-year write-off does
+  not become permanent. Buy is the share of valuations above the price plus a margin of safety (15% by default),
+  Sell the share below the price minus that margin, Hold the rest; Buy or Sell needs a majority. The page shows
+  where the three scenarios fall in the simulation (Microsoft: conservative p16, base p57, optimistic p84 —
+  so treating them as the 20th/80th percentiles was close but not exact) and the simulation's standard error.
+  The revenue and margin errors are measured; the discount-rate and growth spreads are assumptions; the
+  probabilities are conditional on the model and are not calibrated against realised returns (a historical
+  backtest of the signals is future work). The buy and sell zones are thresholds on the model value, not prices
+  to trade at. Banks keep the scenario-based fit (a split lognormal through the three scenarios).
 - **Forecast**: reported history and the three scenarios, a statement-style table (actuals vs estimates) and
   CSV export.
 - **Valuation**: the equity bridge, the build-up of value year by year and the bridge from enterprise to equity
@@ -328,7 +335,8 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
   value per share +$0.94; Amazon +$0.06. The worked example in section 8.2 predates this fix (1.0% debt weight).
 - **Market data** comes from Yahoo Finance and can be unavailable or rate-limited.
 
-**Next steps:** an out-of-sample test of the path to profitability and of the final verdict's calibration, extending
+**Next steps:** an out-of-sample test of the path to profitability, a historical backtest of the final verdict's
+signals against realised returns (point-in-time statements and prices; survivorship bias to control), extending
 the equity-based bank engine (live for JPMorgan and Bank of America) to insurers, and segment-weighted betas.
 
 ## 11. Reproducibility

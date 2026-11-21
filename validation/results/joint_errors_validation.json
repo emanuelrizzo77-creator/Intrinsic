@@ -1,0 +1,250 @@
+{
+ "by_group": {
+  "<1B": {
+   "n_train": 945,
+   "n_test": 189,
+   "raw": {
+    "central_60": {
+     "revenue_h1": 0.556,
+     "revenue_h2": 0.561,
+     "revenue_h3": 0.603,
+     "revenue_h4": 0.608,
+     "revenue_h5": 0.593,
+     "margin_h1": 0.556,
+     "margin_h2": 0.64,
+     "margin_h3": 0.635,
+     "margin_h4": 0.651,
+     "margin_h5": 0.635
+    },
+    "central_90_h5": {
+     "revenue": 0.915,
+     "margin": 0.926
+    },
+    "margin_h5_p1_p99": [
+     -0.859,
+     0.754
+    ]
+   },
+   "z": {
+    "central_60": {
+     "revenue_h1": 0.556,
+     "revenue_h2": 0.64,
+     "revenue_h3": 0.64,
+     "revenue_h4": 0.582,
+     "revenue_h5": 0.598,
+     "margin_h1": 0.582,
+     "margin_h2": 0.619,
+     "margin_h3": 0.688,
+     "margin_h4": 0.667,
+     "margin_h5": 0.693
+    },
+    "central_90_h5": {
+     "revenue": 0.878,
+     "margin": 0.947
+    },
+    "margin_h5_p1_p99": [
+     -17.373,
+     9.705
+    ]
+   }
+  },
+  "1-10B": {
+   "n_train": 1341,
+   "n_test": 391,
+   "raw": {
+    "central_60": {
+     "revenue_h1": 0.56,
+     "revenue_h2": 0.552,
+     "revenue_h3": 0.581,
+     "revenue_h4": 0.555,
+     "revenue_h5": 0.586,
+     "margin_h1": 0.537,
+     "margin_h2": 0.529,
+     "margin_h3": 0.519,
+     "margin_h4": 0.537,
+     "margin_h5": 0.527
+    },
+    "central_90_h5": {
+     "revenue": 0.875,
+     "margin": 0.916
+    },
+    "margin_h5_p1_p99": [
+     -0.503,
+     0.291
+    ]
+   },
+   "z": {
+    "central_60": {
+     "revenue_h1": 0.568,
+     "revenue_h2": 0.56,
+     "revenue_h3": 0.598,
+     "revenue_h4": 0.606,
+     "revenue_h5": 0.639,
+     "margin_h1": 0.581,
+     "margin_h2": 0.598,
+     "margin_h3": 0.596,
+     "margin_h4": 0.632,
+     "margin_h5": 0.611
+    },
+    "central_90_h5": {
+     "revenue": 0.89,
+     "margin": 0.916
+    },
+    "margin_h5_p1_p99": [
+     -12.727,
+     6.313
+    ]
+   }
+  },
+  ">=10B": {
+   "n_train": 458,
+   "n_test": 87,
+   "raw": {
+    "central_60": {
+     "revenue_h1": 0.632,
+     "revenue_h2": 0.678,
+     "revenue_h3": 0.609,
+     "revenue_h4": 0.632,
+     "revenue_h5": 0.598,
+     "margin_h1": 0.529,
+     "margin_h2": 0.506,
+     "margin_h3": 0.575,
+     "margin_h4": 0.471,
+     "margin_h5": 0.506
+    },
+    "central_90_h5": {
+     "revenue": 0.908,
+     "margin": 0.908
+    },
+    "margin_h5_p1_p99": [
+     -0.353,
+     0.244
+    ]
+   },
+   "z": {
+    "central_60": {
+     "revenue_h1": 0.563,
+     "revenue_h2": 0.621,
+     "revenue_h3": 0.529,
+     "revenue_h4": 0.46,
+     "revenue_h5": 0.448,
+     "margin_h1": 0.517,
+     "margin_h2": 0.517,
+     "margin_h3": 0.552,
+     "margin_h4": 0.402,
+     "margin_h5": 0.414
+    },
+    "central_90_h5": {
+     "revenue": 0.805,
+     "margin": 0.839
+    },
+    "margin_h5_p1_p99": [
+     -14.942,
+     7.167
+    ]
+   }
+  },
+  "high_growth": {
+   "n_train": 393,
+   "n_test": 121,
+   "raw": {
+    "central_60": {
+     "revenue_h1": 0.636,
+     "revenue_h2": 0.554,
+     "revenue_h3": 0.521,
+     "revenue_h4": 0.471,
+     "revenue_h5": 0.421,
+     "margin_h1": 0.603,
+     "margin_h2": 0.562,
+     "margin_h3": 0.587,
+     "margin_h4": 0.62,
+     "margin_h5": 0.653
+    },
+    "central_90_h5": {
+     "revenue": 0.818,
+     "margin": 0.843
+    },
+    "margin_h5_p1_p99": [
+     -0.705,
+     1.066
+    ]
+   },
+   "z": {
+    "central_60": {
+     "revenue_h1": 0.562,
+     "revenue_h2": 0.545,
+     "revenue_h3": 0.537,
+     "revenue_h4": 0.57,
+     "revenue_h5": 0.537,
+     "margin_h1": 0.645,
+     "margin_h2": 0.562,
+     "margin_h3": 0.57,
+     "margin_h4": 0.587,
+     "margin_h5": 0.579
+    },
+    "central_90_h5": {
+     "revenue": 0.884,
+     "margin": 0.942
+    },
+    "margin_h5_p1_p99": [
+     -11.887,
+     11.585
+    ]
+   }
+  },
+  "all": {
+   "n_train": 3137,
+   "n_test": 788,
+   "raw": {
+    "central_60": {
+     "revenue_h1": 0.551,
+     "revenue_h2": 0.566,
+     "revenue_h3": 0.572,
+     "revenue_h4": 0.571,
+     "revenue_h5": 0.562,
+     "margin_h1": 0.552,
+     "margin_h2": 0.574,
+     "margin_h3": 0.593,
+     "margin_h4": 0.584,
+     "margin_h5": 0.579
+    },
+    "central_90_h5": {
+     "revenue": 0.862,
+     "margin": 0.912
+    },
+    "margin_h5_p1_p99": [
+     -0.692,
+     0.588
+    ]
+   },
+   "z": {
+    "central_60": {
+     "revenue_h1": 0.565,
+     "revenue_h2": 0.577,
+     "revenue_h3": 0.588,
+     "revenue_h4": 0.572,
+     "revenue_h5": 0.569,
+     "margin_h1": 0.575,
+     "margin_h2": 0.584,
+     "margin_h3": 0.613,
+     "margin_h4": 0.612,
+     "margin_h5": 0.608
+    },
+    "central_90_h5": {
+     "revenue": 0.872,
+     "margin": 0.921
+    },
+    "margin_h5_p1_p99": [
+     -15.006,
+     8.147
+    ]
+   }
+  }
+ },
+ "joint_both_below_p20_h5": {
+  "train": 0.0752,
+  "test": 0.0825,
+  "if_independent": 0.04
+ },
+ "created_utc": "2026-11-21T03:14:33+00:00"
+}

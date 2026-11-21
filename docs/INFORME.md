@@ -296,19 +296,26 @@ sostenga.
   recorre el rango acotado; luego el método de Brent (`scipy.optimize.brentq`) resuelve dentro de un único
   intervalo. Si no hay solución, hay varias o la respuesta no es monótona, se informa sin forzarla, y se muestra
   el error residual. Son las expectativas incorporadas en el precio, no pronósticos ni una señal de compra o venta.
-- **Veredicto final**: Comprar / Mantener / Vender. Los tres escenarios (percentiles 20, 50 y 80 de los
-  errores medidos del modelo) definen una distribución lognormal dividida del valor por acción: el caso base es la
-  mediana y cada lado tiene su propia dispersión, así que el ajuste pasa exactamente por los tres escenarios aunque
-  sean asimétricos (hasta noviembre de 2026 una sola dispersión ubicaba los escenarios de Microsoft en los
-  percentiles 15 y 75). Comprar es la parte de los resultados en que el valor supera el precio en más que un margen
-  de seguridad (15% por defecto, editable), Vender aquella en que queda por debajo en más que ese margen, y
-  Mantener el resto. Las zonas de compra y venta son umbrales sobre el valor del modelo, no precios a los que
-  operar; la página muestra además el precio que conserva el margen de seguridad sobre el valor base. Son
-  probabilidades condicionadas a los supuestos del modelo, no calibradas con rendimientos realizados. Comprar o Vender solo se muestran cuando reúnen la
-  mayoría de los resultados; si no, Mantener. La división se dibuja como barra segmentada y sobre la distribución
-  del valor, con las razones detrás. La dispersión no incluye la incertidumbre de la tasa de descuento ni del
-  crecimiento terminal, así que subestima la incertidumbre real. Dice lo que muestran los números del modelo, no
-  es asesoría de inversión.
+- **Veredicto final**: Comprar / Mantener / Vender a partir de un **Monte Carlo** de 1.000 valoraciones del caso
+  base. Cada simulación toma una trayectoria observada de cinco años de errores de pronóstico de ingresos y
+  margen, juntos (`data/joint_errors.json`: 3.925 ventanas de 610 empresas, así se conserva la correlación entre
+  ambos errores), una beta ±0,20 y una prima de riesgo ±0,5 puntos (normal), y un crecimiento terminal ±1 punto
+  (triangular, por debajo de la tasa libre de riesgo y 1 punto bajo el WACC simulado). Los errores vienen de
+  empresas del mismo tamaño, escalados por la volatilidad de la propia empresa por debajo de $10 mil millones y
+  en puntos a partir de $10 mil millones; las empresas que crecen más de 25% usan un grupo de alto crecimiento.
+  Cada decisión se tomó con empresas que quedaron fuera de la estimación (`validation/joint_errors.py`): el 60%
+  central de los errores cubre entre 49% y 64% de los errores de esas empresas según tamaño y horizonte, y la
+  esquina "ingresos y margen malos a la vez" ocurre en 8,5% de las ventanas, frente a 4% si fueran
+  independientes. Después del año 5 el desvío de margen que se mantiene es la mediana de los años 3–5, para que
+  un cargo puntual no se vuelva permanente. Comprar es la parte de las valoraciones por encima del precio más un
+  margen de seguridad (15% por defecto), Vender la parte por debajo del precio menos ese margen, y Mantener el
+  resto; Comprar o Vender necesitan mayoría. La página muestra dónde caen los tres escenarios en la simulación
+  (Microsoft: conservador p16, base p57, optimista p84; tratarlos como percentiles 20 y 80 era aproximado, no
+  exacto) y el error estándar de la simulación. Los errores de ingresos y margen están medidos; las dispersiones
+  de la tasa de descuento y del crecimiento son supuestos; las probabilidades están condicionadas al modelo y no
+  calibradas con rendimientos realizados (un backtest histórico de las señales queda como trabajo futuro). Las
+  zonas de compra y venta son umbrales sobre el valor del modelo, no precios a los que operar. Los bancos
+  mantienen el ajuste por escenarios (una lognormal dividida que pasa por los tres escenarios).
 - **Resumen**: valor intrínseco, precio de mercado y potencial implícito; el rango de conservador a optimista
   frente al precio de mercado; valor de la empresa y del patrimonio; un veredicto en lenguaje simple y el
   supuesto más importante.
@@ -346,7 +353,9 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
   la deuda de 1,0%).
 - **Datos de mercado** de Yahoo Finance, que pueden no estar disponibles o tener límites de uso.
 
-**Próximos pasos:** una prueba fuera de muestra del camino a la rentabilidad y de la calibración del veredicto final,
+**Próximos pasos:** una prueba fuera de muestra del camino a la rentabilidad, un backtest histórico de las señales del
+veredicto final frente a rendimientos realizados (estados y precios de cada fecha; con control del sesgo de
+supervivencia),
 extender el motor bancario basado en el patrimonio (activo para JPMorgan y Bank of America) a las
 aseguradoras, y betas ponderadas por segmento.
 

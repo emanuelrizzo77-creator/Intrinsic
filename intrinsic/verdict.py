@@ -63,6 +63,23 @@ def value_distribution(conservative, base, optimistic):
             'spread': (s_lo + s_hi) / 2}
 
 
+def empirical_distribution(values):
+    """Distribution from Monte Carlo draws: empirical CDF and quantiles, Gaussian kernel density for the chart
+    (in logs when every draw is positive, Silverman bandwidth)."""
+    vals = sorted(v for v in values if _num(v))
+    if len(vals) < 50:
+        return None
+    log = vals[0] > 0
+    pts = [math.log(v) for v in vals] if log else vals
+    m = sum(pts) / len(pts)
+    sd = math.sqrt(sum((x - m) ** 2 for x in pts) / (len(pts) - 1))
+    iqr = pts[int(.75 * (len(pts) - 1))] - pts[int(.25 * (len(pts) - 1))]
+    bw = 0.9 * min(sd, iqr / 1.34 if iqr > 0 else sd) * len(pts) ** -0.2
+    if not bw > 0:
+        return None
+    return {'kind': 'empirical', 'values': vals, 'log': log, 'points': pts, 'bandwidth': bw}
+
+
 def _z(dist, x):
     """Standardised distance from the median, using the sigma of x's side. None for x <= 0 under a lognormal."""
     if dist['kind'] == 'lognormal':
@@ -76,11 +93,21 @@ def _z(dist, x):
 
 def cdf(dist, x):
     """Prob(value <= x)."""
+    if dist['kind'] == 'empirical':
+        import bisect
+        return bisect.bisect_right(dist['values'], x) / len(dist['values'])
     z = _z(dist, x)
     return 0.0 if z is None else _phi(z)
 
 
 def pdf(dist, x):
+    if dist['kind'] == 'empirical':
+        if dist['log'] and x <= 0:
+            return 0.0
+        u, bw = (math.log(x) if dist['log'] else x), dist['bandwidth']
+        k = sum(math.exp(-0.5 * ((u - p) / bw) ** 2) for p in dist['points'] if abs(u - p) < 6 * bw)
+        dens = k / (len(dist['points']) * bw * math.sqrt(2 * math.pi))
+        return dens / x if dist['log'] else dens
     z = _z(dist, x)
     if z is None:
         return 0.0
@@ -90,7 +117,10 @@ def pdf(dist, x):
 
 
 def quantile(dist, p):
-    """Inverse CDF by bisection (enough for chart limits)."""
+    """Inverse CDF by bisection (enough for chart limits); order statistic for Monte Carlo draws."""
+    if dist['kind'] == 'empirical':
+        vals = dist['values']
+        return vals[min(len(vals) - 1, max(0, int(round(p * (len(vals) - 1)))))]
     s = max(dist['spread_lo'], dist['spread_hi'])
     lo, hi = (1e-9, math.exp(dist['center'] + 10 * s)) if dist['kind'] == 'lognormal' else (
         dist['center'] - 10 * s, dist['center'] + 10 * s)
@@ -122,3 +152,25 @@ def verdict(prices, market_price, margin=0.15):
             # B: the most one could pay and keep the margin of safety on the BASE value (not a classification threshold)
             'price_with_margin': prices['base'] * (1 - margin) if prices['base'] > 0 else None,
             'one_sided': not all(_num(prices.get(k)) for k in ('conservative', 'optimistic'))}
+
+
+def verdict_from_samples(values, market_price, margin=0.15, base=None):
+    """Same output as verdict(), from Monte Carlo draws of value per share (shares of draws in each zone)."""
+    if not _num(market_price) or market_price <= 0 or not 0 <= margin < 1:
+        return None
+    dist = empirical_distribution(values)
+    if dist is None:
+        return None
+    n = len(dist['values'])
+    buy_at, sell_at = market_price * (1 + margin), market_price * (1 - margin)
+    p_buy = sum(v > buy_at for v in dist['values']) / n
+    p_sell = sum(v < sell_at for v in dist['values']) / n
+    probs = {'sell': p_sell, 'hold': max(0.0, 1 - p_buy - p_sell), 'buy': p_buy}
+    action = 'buy' if p_buy > 0.5 else ('sell' if p_sell > 0.5 else 'hold')
+    p_above = sum(v > market_price for v in dist['values']) / n
+    return {'action': action, 'probabilities': probs, 'distribution': dist, 'margin': margin,
+            'buy_above': buy_at, 'sell_below': sell_at, 'market_price': market_price, 'prob_above_market': p_above,
+            'price_with_margin': base * (1 - margin) if _num(base) and base > 0 else None,
+            'one_sided': False, 'n': n,
+            # Monte Carlo standard error of a share p from n draws
+            'mc_se': {k: math.sqrt(max(p * (1 - p), 0.0) / n) for k, p in probs.items()}}

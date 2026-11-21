@@ -45,7 +45,8 @@ def _distribution_chart(v, base):
     dist = v['distribution']
     lo = min(vd.quantile(dist, 0.005), v['sell_below'] * 0.9)
     hi = max(vd.quantile(dist, 0.95), v['buy_above'] * 1.2, (base or 0) * 1.2)   # long right tails flatten the curve
-    if dist['kind'] == 'lognormal':
+    hi = min(hi, max(v['buy_above'], base or 0) * 3)                            # ... and very long ones hide the body
+    if dist['kind'] in ('lognormal', 'empirical') and dist.get('log', True):
         lo = max(lo, 0.0)
     n = 240
     xs = [lo + (hi - lo) * i / (n - 1) for i in range(n)]
@@ -72,14 +73,17 @@ def _distribution_chart(v, base):
     return fig
 
 
-def render_verdict(prices, market_price, reasons, key, chart):
-    """prices: per-share {'conservative','base','optimistic'}; reasons: [html str]; chart: the _chart card helper."""
+def render_verdict(prices, market_price, reasons, key, chart, simulation=None):
+    """prices: per-share {'conservative','base','optimistic'}; reasons: [html str]; chart: the _chart card helper;
+    simulation: intrinsic.value_simulation.simulate output (Monte Carlo) or None for the scenario-based fit."""
     ui.heading(t('Final verdict'), t('What the model\'s numbers say about buying, holding or selling at today\'s price'))
     margin = st.slider(t('Margin of safety'), min_value=0, max_value=40, value=15, step=5, format='%d%%',
                        key=f'verdict_margin_{key}',
                        help=t('How far value and price must differ before the model says buy or sell. A wider margin '
                               'makes Hold more likely.')) / 100
-    v = vd.verdict(prices, market_price, margin)
+    sim = simulation if simulation and simulation.get('values') else None
+    v = (vd.verdict_from_samples(sim['values'], market_price, margin, base=prices.get('base')) if sim else
+         vd.verdict(prices, market_price, margin))
     if v is None:
         ui.state_card(t('No verdict'), t('The valuation range is not available for this company, so the model cannot '
                                          'estimate how likely each outcome is.'))
@@ -96,8 +100,10 @@ def render_verdict(prices, market_price, reasons, key, chart):
           'Conditional on the model\'s assumptions: not the probability that the share price rises or falls',
           key=f'verdict-split-{key}')
     chart(_distribution_chart(v, prices.get('base')), 'Where the probabilities come from',
-          'Model value distribution from the conservative, base and optimistic scenarios, split at the market price '
-          '± the margin of safety', key=f'verdict-dist-{key}')
+          ('Monte Carlo distribution of the model value (1,000 valuations), split at the market price ± the margin '
+           'of safety') if sim else
+          ('Model value distribution from the conservative, base and optimistic scenarios, split at the market price '
+           '± the margin of safety'), key=f'verdict-dist-{key}')
     # Classification thresholds on the model VALUE (A), not recommended prices; B is shown separately.
     rows = [(t('Buy zone: model value above'), ui.usd(v['buy_above'])),
             (t('Sell zone: model value below'), ui.usd(v['sell_below'])),
@@ -105,16 +111,41 @@ def render_verdict(prices, market_price, reasons, key, chart):
     if v.get('price_with_margin'):
         rows.append((t('Price that keeps a {m:.0%} margin of safety on the base value', m=v['margin']),
                      ui.usd(v['price_with_margin'])))
+    if sim:
+        from intrinsic.value_simulation import percentile_rank
+        ranks = {s: percentile_rank(sim['values'], prices.get(s)) for s in ('conservative', 'base', 'optimistic')}
+        if all(r is not None for r in ranks.values()):
+            rows.append((t('Where the scenarios fall in the simulation'),
+                         t('conservative p{c:.0f} · base p{b:.0f} · optimistic p{o:.0f}', c=ranks['conservative'] * 100,
+                           b=ranks['base'] * 100, o=ranks['optimistic'] * 100)))
+        rows.append((t('Simulation precision'), t('{n:,} valuations · ±{se:.1f} points on the verdict share',
+                                                  n=v['n'], se=v['mc_se'][a] * 100)))
     ui.md('<div class="ix-note"><div class="ix-label">' + t('Why') + '</div><ul>'
           + ''.join(f'<li>{r}</li>' for r in reasons) + '</ul>'
           + '<div class="ix-state" style="margin-top:10px">' + ui.kv_rows(rows) + '</div></div>')
-    notes = [t('This is what the model\'s numbers say, not investment advice or a recommendation for your portfolio.'),
-             t('Probabilities are conditional on the model\'s assumptions: base is the median and the conservative and '
-               'optimistic cases are placed at the 20th and 80th percentiles. They are not calibrated against realised '
-               'returns. The buy and sell zones are thresholds on the model value (market price ± the margin), not '
-               'prices to trade at.'),
-             t('The spread comes from the model\'s conservative and optimistic scenarios; uncertainty in the discount '
-               'rate and terminal growth is not included, so real outcomes are wider.')]
+    notes = [t('This is what the model\'s numbers say, not investment advice or a recommendation for your portfolio.')]
+    if sim:
+        notes.append(t('Each of the 1,000 valuations re-runs the base case with a revenue and margin path drawn from '
+                       'errors measured on 610 companies (validated on companies left out of the estimate), a beta '
+                       '±{b:.2f}, an equity risk premium ±{e:.1f} points and terminal growth ±{g:.0f} point. The '
+                       'revenue and margin errors are measured; the discount-rate and growth spreads are assumptions.',
+                       b=sim['inputs']['beta_sd'] or 0, e=(sim['inputs']['erp_sd'] or 0) * 100,
+                       g=sim['inputs']['g_half_range'] * 100) if sim['inputs'].get('beta_sd') else
+                     t('Each of the 1,000 valuations re-runs the base case with a revenue and margin path drawn from '
+                       'errors measured on 610 companies (validated on companies left out of the estimate), a WACC '
+                       '±{w:.0f} point (manual discount rate) and terminal growth ±{g:.0f} point. The revenue and margin '
+                       'errors are measured; the discount-rate and growth spreads are assumptions.',
+                       w=(sim['inputs']['wacc_sd'] or 0) * 100, g=sim['inputs']['g_half_range'] * 100))
+        notes.append(t('Probabilities are conditional on the model and not calibrated against realised returns. The buy '
+                       'and sell zones are thresholds on the model value (market price ± the margin), not prices to '
+                       'trade at.'))
+    else:
+        notes += [t('Probabilities are conditional on the model\'s assumptions: base is the median and the conservative '
+                    'and optimistic cases are placed at the 20th and 80th percentiles. They are not calibrated against '
+                    'realised returns. The buy and sell zones are thresholds on the model value (market price ± the '
+                    'margin), not prices to trade at.'),
+                  t('The spread comes from the model\'s conservative and optimistic scenarios; uncertainty in the '
+                    'discount rate and terminal growth is not included, so real outcomes are wider.')]
     if v['one_sided']:
         notes.append(t('One scenario is not valued, so the spread is estimated from the other side and assumed '
                        'symmetric.'))
