@@ -28,7 +28,7 @@ Three design choices distinguish it from a typical student DCF:
    companies the model had never seen, forecasting from 2019 onward. All five criteria passed. Ideas that lost
    out of sample were rejected and are documented.
 3. **It refuses rather than guesses.** Missing statements block a valuation instead of being filled with zeros;
-   insurers, REITs, hyperinflationary-currency filers and development-stage companies are refused with the
+   REITs, hyperinflationary-currency filers and development-stage companies are refused with the
    reason shown.
 
 ## 2. Problem
@@ -62,7 +62,7 @@ assumption, and every claim about accuracy backed by an out-of-sample test.**
 ```
 
 The code is a Python package (`intrinsic/`) with a Streamlit front end (`app.py`), a `validation/` folder with
-every calibration and test script, dated data snapshots in `data/`, and 181 unit tests run by GitHub Actions on
+every calibration and test script, dated data snapshots in `data/`, and 188 unit tests run by GitHub Actions on
 every push. Earlier iterations are kept, unused, in `archive/`.
 
 ## 4. Data pipeline
@@ -83,9 +83,27 @@ the filing is derived from pretax income and interest and flagged as *derived*.
 **Equity bridge.** Net debt = debt (including finance leases) − cash − short-term investments − non-operating
 investments, all at the same balance-sheet date. Shares are the diluted weighted average for the latest year.
 
-**Sector routing.** The SIC code decides whether FCFF applies. Banks, insurers, REITs and holding companies are
-routed to an "outside the scope of this model" page *before* any market data is loaded, with an explanation of
-why a different model is needed.
+**Sector routing.** The SIC code decides whether FCFF applies. REITs and holding companies are routed to an
+"outside the scope of this model" page *before* any market data is loaded, with an explanation of why a different
+model is needed. Banks and insurers go to the equity engine below.
+
+**Banks and insurers: equity engine.** For a bank, deposits are raw material; for an insurer, policyholder reserves
+are; neither is financing, so free cash flow to the firm and WACC do not apply. Both are valued on equity at the
+CAPM cost of equity (Damodaran levered industry beta, used directly) with two models side by side: an excess-return
+(residual income) model, book value plus the present value of ROE above the cost of equity, with ROE fading from
+its 3-year mean to its long-run median; and a two-stage dividend discount model on dividends plus buybacks. The
+midpoint is the value; the gap between them is shown. Insurers (November 2026) need three adjustments to their
+reported figures: *(1)* since 2018 gains on equity securities, realised or not, run through net income (ASU
+2016-01), so operating earnings exclude them after a 21% tax (other realised gains stay: for life insurers they are
+mostly hedges offsetting liability changes also in net income); *(2)* book value excludes AOCI, which moves with bond
+prices; *(3)* when the equity portfolio is at least 10% of common equity it is taken out of book value and earnings
+(with its dividends, tagged or at an assumed 2% yield) and added back at market value net of the deferred tax on its
+unrealised gain, since a marked-to-market portfolio is expected to earn just its required return. For Berkshire
+Hathaway the separated portfolio is $253 B and the models value the rest: underwriting, investment income on float,
+the railroad, utilities and the other operating companies; operating ROE was 3–17% in 2019–2025 against a
+reported −5% to +23%. Berkshire's two share classes are counted in class B units from market capitalisation ÷ price,
+since the 10-K cover page no longer gives a total. Neither engine is backtested; fade speed and scenario rules are
+economic assumptions.
 
 **Foreign private issuers (November 2026).** Companies filing Form 20-F or 40-F are adapted at load time so
 the engine reads them like a 10-K filer: the annual report is relabelled; IFRS concepts are mapped to their US GAAP
@@ -196,7 +214,7 @@ median and less than half that of extrapolating today's growth.
 ### 7.4 Coverage beyond the Top 25
 
 The dashboard is fully tested on its Top 25 list (22 with the FCFF model; JPMorgan and Bank of America with
-the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). Its 22 FCFF valuations are frozen as a regression
+the bank engine; Berkshire Hathaway with the insurer engine). Its 22 FCFF valuations are frozen as a regression
 baseline (`validation/top25_baseline.py`, November 2026): the SEC inputs are stored in `tests/fixtures`, and a unit
 test fails if the engine, the calibration or the Monte Carlo error pool moves any status, scenario price or simulated
 quantile, so extending the engine to more companies cannot silently change these 22. `validation/universe_coverage.py` samples random NYSE/Nasdaq companies, one listing
@@ -362,8 +380,9 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
 
 ## 10. Limitations and future work
 
-- **Scope.** Non-financial companies filing Form 10-K under US GAAP. Banks use their own equity engine;
-  insurers, hyperinflationary-currency filers and development-stage companies are refused today. Loss-making
+- **Scope.** Non-financial companies filing Form 10-K under US GAAP. Banks and insurers use the equity engine,
+  which is not backtested; for life insurers, realised gains are kept in earnings and long-duration accounting (LDTI)
+  is not modelled. Hyperinflationary-currency filers and development-stage companies are refused today. Loss-making
   companies are valued on an assumed path to profitability, which is not validated out of sample.
 - **What is not validated.** CapEx, D&A and working-capital paths are consistent by construction but were not
   scored as forecasts; years 6–10, the terminal value and the final valuation are not validated.
@@ -378,8 +397,7 @@ lacks a translation. The **SEC company search** opens any registrant under a vis
 - **Market data** comes from Yahoo Finance and can be unavailable or rate-limited.
 
 **Next steps:** an out-of-sample test of the path to profitability, a survivorship-free rerun of the verdict backtest
-(delisted prices from a point-in-time source), extending
-the equity-based bank engine (live for JPMorgan and Bank of America) to insurers, and segment-weighted betas.
+(delisted prices from a point-in-time source), a backtest of the bank and insurer engine, and segment-weighted betas.
 
 ## 11. Reproducibility
 
@@ -389,7 +407,7 @@ The dashboard runs live at https://intrinsic-dcf.streamlit.app. To run it locall
 pip install -r requirements.txt
 export INTRINSIC_SEC_USER_AGENT="Intrinsic your.name@example.com"
 streamlit run app.py                               # the dashboard
-python -m unittest discover -s tests               # 181 unit tests
+python -m unittest discover -s tests               # 188 unit tests
 python -m validation.calibrate_fade --n 500        # rebuild the panel and calibration
 python -m validation.final_validation              # score the frozen design on fresh companies
 python -m validation.compare_regime_anchor         # a pre-registered anchor test

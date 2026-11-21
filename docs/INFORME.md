@@ -28,7 +28,7 @@ Tres decisiones de diseño lo distinguen de un DCF típico de estudiante:
    con 800 empresas que el modelo nunca había visto, proyectando desde 2019. Cumplió los cinco. Las ideas que
    perdieron fuera de muestra se descartaron y quedaron documentadas.
 3. **Rechaza en lugar de adivinar.** Los estados financieros faltantes bloquean la valoración en vez de rellenarse
-   con ceros; aseguradoras, REIT, empresas que reportan en monedas hiperinflacionarias y empresas en etapa de
+   con ceros; REIT, empresas que reportan en monedas hiperinflacionarias y empresas en etapa de
    desarrollo se rechazan mostrando el motivo.
 
 ## 2. El problema
@@ -62,7 +62,7 @@ afirmación sobre su precisión respaldada por una prueba fuera de muestra.**
 ```
 
 El código es un paquete de Python (`intrinsic/`) con una interfaz en Streamlit (`app.py`), una carpeta
-`validation/` con todos los scripts de calibración y prueba, datos de referencia fechados en `data/` y 181 tests
+`validation/` con todos los scripts de calibración y prueba, datos de referencia fechados en `data/` y 188 tests
 unitarios que GitHub Actions corre en cada push. Las versiones anteriores se conservan, sin uso, en `archive/`.
 
 ## 4. Pipeline de datos
@@ -85,9 +85,31 @@ intereses, y se marca como *derivada*.
 plazo − inversiones no operativas, todo a la misma fecha de balance. Las acciones son el promedio ponderado
 diluido del último año.
 
-**Clasificación por sector.** El código SIC decide si aplica el FCFF. Bancos, aseguradoras, REIT y sociedades de
-cartera se envían a una página de "fuera del alcance de este modelo" *antes* de cargar datos de mercado, con una
-explicación de por qué necesitan otro modelo.
+**Clasificación por sector.** El código SIC decide si aplica el FCFF. Los REIT y las sociedades de cartera se
+envían a una página de "fuera del alcance de este modelo" *antes* de cargar datos de mercado, con una explicación de
+por qué necesitan otro modelo. Los bancos y las aseguradoras van al motor de patrimonio que se describe a
+continuación.
+
+**Bancos y aseguradoras: motor de patrimonio.** Para un banco, los depósitos son materia prima; para una
+aseguradora, las reservas de los asegurados; ninguno es financiamiento, así que el flujo de caja libre de la firma y
+el WACC no aplican. Ambos se valoran sobre el patrimonio al costo del patrimonio de CAPM (beta apalancada de la
+industria de Damodaran, usada directamente) con dos modelos lado a lado: un modelo de rendimiento en exceso
+(ingreso residual), valor en libros más el valor presente del ROE por encima del costo del patrimonio, con el ROE
+convergiendo desde su media de 3 años hasta su mediana de largo plazo; y un modelo de descuento de dividendos de dos
+etapas sobre dividendos más recompras. El valor es el punto medio, y se muestra la brecha entre ambos. Las
+aseguradoras (noviembre de 2026) necesitan tres ajustes a sus cifras reportadas: *(1)* desde 2018 las ganancias en
+acciones, realizadas o no, pasan por la utilidad neta (ASU 2016-01), así que la utilidad operativa las excluye
+después de un impuesto del 21% (las demás ganancias realizadas se mantienen: en las aseguradoras de vida son sobre
+todo coberturas que compensan cambios en pasivos que también están en la utilidad neta); *(2)* el valor en libros
+excluye el AOCI, que se mueve con el precio de los bonos; *(3)* cuando la cartera de acciones es al menos el 10% del
+patrimonio común, se separa del valor en libros y de las utilidades (con sus dividendos, etiquetados o con un
+rendimiento supuesto del 2%) y se suma de nuevo a valor de mercado neto del impuesto diferido sobre su ganancia no
+realizada, porque se espera que una cartera a valor de mercado rinda justo su rendimiento requerido. En Berkshire
+Hathaway la cartera separada vale $253 mil millones y los modelos valoran el resto: la suscripción, el ingreso por
+invertir el float, el ferrocarril, las eléctricas y las demás empresas operativas; el ROE operativo fue de 3% a 17%
+en 2019–2025, frente a un ROE reportado de −5% a +23%. Las dos clases de acciones de Berkshire se cuentan en
+unidades de clase B como capitalización ÷ precio, porque la portada del 10-K ya no trae un total. Ninguno de los dos
+motores tiene backtest; la velocidad de convergencia y las reglas de los escenarios son supuestos económicos.
 
 **Emisores extranjeros (noviembre 2026).** Las empresas que presentan el Form 20-F o 40-F se adaptan al
 cargar los datos para que el motor las lea como si presentaran el 10-K: el informe anual se reetiqueta; los
@@ -204,7 +226,7 @@ la mediana histórica y menos de la mitad que el de extrapolar el crecimiento ac
 ### 7.4 Cobertura más allá del Top 25
 
 El dashboard está probado a fondo con su lista Top 25 (22 con el modelo FCFF; JPMorgan y Bank of America con el
-motor bancario; Berkshire Hathaway, registrada como aseguradora, queda fuera de alcance). Sus 22 valoraciones FCFF quedan congeladas
+motor bancario; Berkshire Hathaway con el motor de aseguradoras). Sus 22 valoraciones FCFF quedan congeladas
 como referencia de regresión (`validation/top25_baseline.py`, noviembre de 2026): los datos de la SEC se guardan en
 `tests/fixtures` y una prueba unitaria falla si el motor, la calibración o el conjunto de errores del Monte Carlo
 cambian algún estado, precio de escenario o cuantil simulado, de modo que ampliar el motor a más empresas no puede
@@ -383,9 +405,10 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
 
 ## 10. Limitaciones y trabajo futuro
 
-- **Alcance.** Empresas no financieras que presentan el Form 10-K bajo US GAAP. Los bancos usan su propio motor
-  basado en el patrimonio; las aseguradoras, las empresas con moneda hiperinflacionaria y las empresas en etapa
-  de desarrollo se rechazan por ahora. Las empresas con pérdidas se valoran con un camino supuesto a la rentabilidad, que no
+- **Alcance.** Empresas no financieras que presentan el Form 10-K bajo US GAAP. Los bancos y las aseguradoras usan
+  el motor de patrimonio, que no tiene backtest; en las aseguradoras de vida, las ganancias realizadas se mantienen
+  en la utilidad y la contabilidad de contratos de larga duración (LDTI) no se modela. Las empresas con moneda
+  hiperinflacionaria y las empresas en etapa de desarrollo se rechazan por ahora. Las empresas con pérdidas se valoran con un camino supuesto a la rentabilidad, que no
   está validado fuera de muestra.
 - **Lo que no está validado.** Las trayectorias de CapEx, D&A y capital de trabajo son consistentes por
   construcción pero no se evaluaron como proyecciones; los años 6 a 10, el valor terminal y la valoración final
@@ -404,8 +427,7 @@ algún texto no tiene traducción. El **buscador SEC** abre cualquier empresa re
 
 **Próximos pasos:** una prueba fuera de muestra del camino a la rentabilidad, repetir el backtest del veredicto sin
 sesgo de supervivencia (precios de empresas que dejaron de cotizar de una fuente histórica),
-extender el motor bancario basado en el patrimonio (activo para JPMorgan y Bank of America) a las
-aseguradoras, y betas ponderadas por segmento.
+un backtest del motor de bancos y aseguradoras, y betas ponderadas por segmento.
 
 ## 11. Reproducibilidad
 
@@ -415,7 +437,7 @@ El dashboard funciona en vivo en https://intrinsic-dcf.streamlit.app. Para corre
 pip install -r requirements.txt
 export INTRINSIC_SEC_USER_AGENT="Intrinsic tu.nombre@ejemplo.com"
 streamlit run app.py                               # el dashboard
-python -m unittest discover -s tests               # 181 tests unitarios
+python -m unittest discover -s tests               # 188 tests unitarios
 python -m validation.calibrate_fade --n 500        # reconstruir el panel y la calibración
 python -m validation.final_validation              # evaluar el diseño congelado con empresas nuevas
 python -m validation.compare_regime_anchor         # una prueba de ancla registrada de antemano

@@ -24,9 +24,9 @@ def classify_sic(sic):
     except (ValueError, TypeError):
         return ModelDecision('unclassified', 'Unknown', False, 'No reliable SIC classification')
     if 6000 <= n <= 6199:
-        return ModelDecision('bank_equity', 'Bank / credit institution', False, 'Requires a validated equity-based bank valuation model')
+        return ModelDecision('bank_equity', 'Bank / credit institution', False, 'Equity engine (excess return + dividend discount), not FCFF')
     if 6300 <= n <= 6411:
-        return ModelDecision('insurance_equity', 'Insurance', False, 'Requires insurance-specific equity and regulatory capital analysis')
+        return ModelDecision('insurance_equity', 'Insurance', False, 'Equity engine on operating earnings (excess return + dividend discount), not FCFF')
     if 6798 == n:
         return ModelDecision('reit_affo', 'REIT', False, 'Requires FFO/AFFO or NAV and property-specific inputs')
     if 6700 <= n <= 6799:

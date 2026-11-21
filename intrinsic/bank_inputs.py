@@ -91,6 +91,12 @@ def build_history(payload, last_n=10):
         intang = (r['Goodwill'] or 0.0) + (r['Intangibles'] or 0.0)
         r['Tangible common equity'] = r['Common equity'] - intang if is_number(r['Common equity']) else None
         rows.append(r)
+    add_ratios(rows)
+    return rows, provenance
+
+
+def add_ratios(rows):
+    """ROE, ROTCE, book growth and payout ratios from 'Net income to common', 'Common equity', payouts (in place)."""
     # Ratios need the previous year's book value (beginning-of-year equity).
     for prev, r in zip(rows, rows[1:]):
         ce0, tce0, ni = prev['Common equity'], prev['Tangible common equity'], r['Net income to common']
@@ -108,7 +114,7 @@ def build_history(payload, last_n=10):
         r['Payout ratio'] = paid / ni if is_number(ni) and ni > 0 and r['Total payout'] is not None else None
         r['Dividend payout ratio'] = (r['Common dividends'] / ni if is_number(ni) and ni > 0
                                       and is_number(r['Common dividends']) else None)
-    return rows, provenance
+    return rows
 
 
 def latest_shares(payload):

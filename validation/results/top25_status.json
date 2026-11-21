@@ -221,7 +221,7 @@
   "sic": "6331",
   "sector_model": "insurance_equity",
   "result": "NOT_FCFF",
-  "detail": "Insurance: Requires insurance-specific equity and regulatory capital analysis"
+  "detail": "Insurance: Equity engine on operating earnings (excess return + dividend discount), not FCFF"
  },
  {
   "ticker": "WMT",
@@ -283,7 +283,7 @@
   "sic": "6021",
   "sector_model": "bank_equity",
   "result": "NOT_FCFF",
-  "detail": "Bank / credit institution: Requires a validated equity-based bank valuation model"
+  "detail": "Bank / credit institution: Equity engine (excess return + dividend discount), not FCFF"
  },
  {
   "ticker": "V",
@@ -535,7 +535,7 @@
   "sic": "6021",
   "sector_model": "bank_equity",
   "result": "NOT_FCFF",
-  "detail": "Bank / credit institution: Requires a validated equity-based bank valuation model"
+  "detail": "Bank / credit institution: Equity engine (excess return + dividend discount), not FCFF"
  },
  {
   "ticker": "NFLX",

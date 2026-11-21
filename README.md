@@ -29,7 +29,8 @@ where it comes from and stays editable. The interface is available in **English 
 - **Failures are documented, not hidden.** Earlier approaches that lost out of sample (per-metric model
   selection, alternative margin anchors) are kept in `archive/` and summarised below.
 - **It refuses rather than guesses.** Missing statements block the valuation instead of being filled with zeros;
-  banks, insurers and holding companies are routed to an "outside the scope of this model" page.
+  REITs and holding companies are routed to an "outside the scope of this model" page; banks and insurers get
+  their own equity-based engine (FCFF does not apply to them).
 
 ## How a valuation is built
 
@@ -132,7 +133,7 @@ the report, section 7.5.
 ## Coverage beyond the Top 25 (universal engine, beta)
 
 The dashboard is fully tested on the Top 25 list (22 with the FCFF model; JPMorgan and Bank of America
-with the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). For any other SEC filer, `validation/universe_coverage.py` draws a
+with the bank engine; Berkshire Hathaway with the insurer engine). For any other SEC filer, `validation/universe_coverage.py` draws a
 fixed random sample of NYSE/Nasdaq companies (one listing per company) and runs the same steps as the dashboard.
 Latest run, 60 non-financial companies (seed 2026):
 
@@ -160,7 +161,8 @@ editable). It states what the model's numbers say, not investment advice.
 
 ## Limitations
 
-- Non-financial companies only; banks, insurers, REITs and holding companies are not valued.
+- FCFF covers non-financial companies; banks and insurers use the equity engine (excess return + dividend discount),
+  which is not backtested yet; REITs and holding companies are not valued.
 - One SIC code per company, so multi-segment businesses (a retailer with a cloud division) get a single
   industry beta — the dashboard lets you choose another industry.
 - The long-run margin anchor is the largest assumption for companies whose economics changed recently; the
@@ -182,7 +184,10 @@ intrinsic/              valuation engine
   balance_sheet.py      balance-sheet normalisation
   operating_capital.py  PP&E, working capital, R&D capitalisation
   sec_tags.py           XBRL tag lists and audit
-  sector_routing.py     SIC-based routing (FCFF vs out of scope)
+  sector_routing.py     SIC-based routing (FCFF, bank / insurer equity engine, out of scope)
+  bank_model.py         equity engine for banks and insurers: excess-return model and dividend discount model
+  bank_inputs.py        bank history from SEC (net income to common, book value, payouts)
+  insurance_inputs.py   insurer history: operating earnings and book value, equity portfolio at market
   wacc_data.py          market cap, debt, interest coverage, industry beta
   wacc_inputs.py        risk-free rate, ERP, synthetic-rating cost of debt, tax
   industry_beta.py      SIC → Damodaran industry, Hamada relevering
@@ -191,7 +196,7 @@ intrinsic/              valuation engine
   ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests (181), including translation coverage
+tests/                  unit tests (188), including translation coverage
 docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```

@@ -112,12 +112,15 @@ TOP_25 = {
     "AMD": "Advanced Micro Devices Inc.",
 }
 ui.brand(st.sidebar, animate=_show_intro)
+# Clicking the active language clears a segmented control; restore the last language BEFORE the widget is created
+# (assigning its key afterwards raises StreamlitWidgetAlreadyInstantiatedError and stops the app).
+if not st.session_state.get(LANG_KEY):
+    st.session_state[LANG_KEY] = st.session_state.get("ix_lang_last", "en")
 st.sidebar.segmented_control(
-    "Language", list(LANGUAGES), format_func=LANGUAGES.get, default="en", key=LANG_KEY,
+    "Language", list(LANGUAGES), format_func=LANGUAGES.get, key=LANG_KEY,
     label_visibility="collapsed", width="stretch",
 )
-if not st.session_state.get(LANG_KEY):        # segmented control can be cleared; keep a language
-    st.session_state[LANG_KEY] = "en"
+st.session_state["ix_lang_last"] = st.session_state[LANG_KEY]
 st.sidebar.subheader(t("Company"))
 selection_mode = st.sidebar.radio(
     t("Company source"),
@@ -182,10 +185,11 @@ except Exception:
     _route = None          # classification unavailable: let the model's own checks decide
 # Do not silently value Alphabet using Microsoft assumptions.
 _valued = not _route or _route["model"] == "fcff"
-_bank = bool(_route) and _route["model"] == "bank_equity"
+_bank = bool(_route) and _route["model"] in ("bank_equity", "insurance_equity")
+_insurer = bool(_route) and _route["model"] == "insurance_equity"
 st.markdown(
     f"""<div class="ix-head"><div>
-      <div class="ix-eyebrow"><span>{t("Equity valuation")}</span><span>·</span><b>{t("DCF · FCFF, 10-year") if _valued else (t("Bank · excess return + DDM") if _bank else t("Not valued"))}</b>
+      <div class="ix-eyebrow"><span>{t("Equity valuation")}</span><span>·</span><b>{t("DCF · FCFF, 10-year") if _valued else ((t("Insurer · excess return + DDM") if _insurer else t("Bank · excess return + DDM")) if _bank else t("Not valued"))}</b>
         <span>·</span><span>{t("Research tool, not investment advice")}</span></div>
       <div class="ix-name"><h1>{html_escape(company_name)}</h1><span class="ix-ticker">{html_escape(ticker)}</span></div>
     </div><div>{ui.tag(t("Universal engine · beta"), "warn") if new_company else ui.tag(t("Top 25 · fully tested"), "plain")}</div>
@@ -194,9 +198,10 @@ st.markdown(
 # Filled by the dashboard once SEC and market data are loaded (company metadata strip).
 header_strip = st.container()
 
-# Banks: equity-based engine (excess return + dividend discount), with its own sidebar and workspace.
+# Banks and insurers: equity-based engine (excess return + dividend discount), with its own sidebar and workspace.
 if _bank:
-    render_bank(ticker, header_strip, cargar_tasa_libre_riesgo, equity_risk_premium_default(), TERMINAL_GROWTH)
+    render_bank(ticker, header_strip, cargar_tasa_libre_riesgo, equity_risk_premium_default(), TERMINAL_GROWTH,
+                kind="insurer" if _insurer else "bank")
     st.stop()
 
 if _route and _route["model"] != "fcff":

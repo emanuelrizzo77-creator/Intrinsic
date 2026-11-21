@@ -939,6 +939,71 @@ ES = {
     'MKT': 'MERC.',
     '(selected)': '(seleccionado)',
     'Band = conservative → optimistic': 'Banda = conservador → optimista',
+    # ---- insurer engine
+    '<b>Equity portfolio at market:</b> the {p} portfolio of listed stocks (market value net of the tax on its unrealised gain) is taken out of book value and earnings and added back at that value, since it is expected to earn just its required return. The models value the rest: underwriting, investment income on float and the operating companies.':
+        '<b>Cartera de acciones a valor de mercado:</b> la cartera de acciones cotizadas de {p} (valor de mercado neto del impuesto sobre su ganancia no realizada) se separa del valor en libros y de las utilidades y se suma de nuevo por ese valor, porque se espera que rinda justo su rendimiento requerido. Los modelos valoran el resto: la suscripción de seguros, el ingreso por invertir el float y las empresas operativas.',
+    '<b>Operating figures:</b> gains on equity securities, which since 2018 run through net income with the stock market, are excluded from earnings and ROE, and book value excludes AOCI (bond prices moving with interest rates).':
+        '<b>Cifras operativas:</b> las ganancias en acciones, que desde 2018 pasan por la utilidad neta al ritmo de la bolsa, se excluyen de las utilidades y del ROE, y el valor en libros excluye el AOCI (precios de bonos que se mueven con las tasas de interés).',
+    '<b>Two models, one range.</b> With perfectly consistent inputs both give the same value. Here the excess-return model follows book value and ROE, while the DDM follows the company&#39;s actual payout policy; a large gap means today&#39;s payout and growth differ from what the ROE path implies.':
+        '<b>Dos modelos, un rango.</b> Con supuestos perfectamente coherentes, ambos dan el mismo valor. Aquí el modelo de rendimiento en exceso sigue el valor en libros y el ROE, y el DDM sigue la política real de reparto de la empresa; una brecha grande significa que el reparto y el crecimiento de hoy difieren de lo que implica la trayectoria del ROE.',
+    '<b>Why not FCFF:</b> an insurer invests premiums before paying claims; policyholder reserves are operating liabilities, not financing, so free cash flow to the firm and WACC do not apply. Both models discount at the cost of equity.':
+        '<b>Por qué no FCFF:</b> una aseguradora invierte las primas antes de pagar los siniestros; las reservas de los asegurados son pasivos operativos, no financiamiento, así que el flujo de caja libre de la firma y el WACC no aplican. Ambos modelos descuentan al costo del patrimonio.',
+    'Damodaran levered beta for {name} ({n} US firms, Jan 2026). For insurers the levered beta is used directly: policyholder reserves are operating liabilities, so un/re-levering with debt is not meaningful.':
+        'Beta apalancada de Damodaran para {name} ({n} empresas de EE. UU., ene 2026). En aseguradoras se usa directamente la beta apalancada: las reservas de los asegurados son pasivos operativos, así que desapalancar y reapalancar con deuda no tiene sentido.',
+    'Equity portfolio':
+        'Cartera de acciones',
+    'equity portfolio':
+        'cartera de acciones',
+    'In the long run the company earns only its cost of equity, so growth adds no value and the price converges to book value.':
+        'A largo plazo la empresa gana solo su costo del patrimonio, así que el crecimiento no agrega valor y el precio converge al valor en libros.',
+    'Insurer assumptions':
+        'Supuestos de la aseguradora',
+    'Insurer · excess return + DDM':
+        'Aseguradora · rendimiento en exceso + DDM',
+    'Insurers: operating earnings exclude gains on equity securities, book value excludes AOCI, and a large equity portfolio is valued at market net of tax.':
+        'Aseguradoras: las utilidades operativas excluyen las ganancias en acciones, el valor en libros excluye el AOCI y una cartera de acciones grande se valora a precio de mercado neta de impuestos.',
+    'Operating ROE':
+        'ROE operativo',
+    'Operating book value':
+        'Valor en libros operativo',
+    'Operating earnings':
+        'Utilidad operativa',
+    'Operating earnings (USD B)':
+        'Utilidad operativa (USD mil M)',
+    'Premiums earned':
+        'Primas devengadas',
+    'ROE and payout are on operating earnings (equity-security gains excluded).':
+        'El ROE y el reparto se calculan sobre la utilidad operativa (sin las ganancias en acciones).',
+    'The company is expected to keep earning <b>{s} above</b> its cost of equity in the long run, so it is worth more than its book value.':
+        'Se espera que la empresa siga ganando <b>{s} por encima</b> de su costo del patrimonio a largo plazo, así que vale más que su valor en libros.',
+    'The insurer engine has not been backtested out of sample yet (the FCFF model has). Fade speed, scenario rules, the 21% tax on portfolio gains and, when untagged, the portfolio dividend yield are economic assumptions. Use the range, not a single number.':
+        'El motor de aseguradoras todavía no tiene un backtest fuera de muestra (el modelo FCFF sí). La velocidad de convergencia, las reglas de los escenarios, el impuesto del 21% sobre las ganancias de la cartera y, cuando no está etiquetado, el rendimiento por dividendos de la cartera son supuestos económicos. Usa el rango, no un solo número.',
+    'You are viewing YOUR case: insurer assumptions changed from model values.':
+        'Estás viendo TU caso: cambiaste supuestos de la aseguradora respecto a los valores del modelo.',
+    'adjusted book · SEC':
+        'libros ajustados · SEC',
+    'kept in operating book':
+        'se mantiene en libros operativos',
+    'market value net of tax':
+        'valor de mercado neto de impuestos',
+    'of which equity portfolio':
+        'de ello, cartera de acciones',
+    'Reported net income to common':
+        'Utilidad neta reportada a comunes',
+    'Gains on equity securities':
+        'Ganancias en acciones',
+    'Portfolio dividends (after tax)':
+        'Dividendos de la cartera (después de impuestos)',
+    'Reported common equity':
+        'Patrimonio común reportado',
+    'AOCI':
+        'AOCI (otro resultado integral acumulado)',
+    'Equity portfolio (after tax)':
+        'Cartera de acciones (neta de impuestos)',
+    'Net investment income':
+        'Ingreso neto por inversiones',
+    'market capitalisation ÷ price (Yahoo Finance): all share classes in units of the quoted class; the SEC cover page has no current total':
+        'capitalización ÷ precio (Yahoo Finance): todas las clases de acciones en unidades de la clase cotizada; la portada del 10-K no trae un total actual',
 }
 
 GLOSSARY_ES = {

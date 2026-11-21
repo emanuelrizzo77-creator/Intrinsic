@@ -1,7 +1,9 @@
-"""Streamlit workspace for banks: excess-return model and dividend discount model side by side.
+"""Streamlit workspace for banks and insurers: excess-return model and dividend discount model side by side.
 
-Presentation only: every number comes from intrinsic.bank_model / intrinsic.bank_inputs or from the
-market and discount-rate inputs loaded here. Visual building blocks are shared with the FCFF workspace.
+Presentation only: every number comes from intrinsic.bank_model / intrinsic.bank_inputs / intrinsic.insurance_inputs
+or from the market and discount-rate inputs loaded here. Visual building blocks are shared with the FCFF workspace.
+Insurers use the same two models on operating earnings and operating book value; a large equity portfolio is held
+at market value net of tax and added to both (intrinsic/insurance_inputs.py).
 """
 from __future__ import annotations
 
@@ -16,8 +18,9 @@ from intrinsic import bank_model as bm
 from intrinsic import sml
 from intrinsic.bank_inputs import load_bank_inputs
 from intrinsic.dashboard_panel import _chart, _glossary, _help, _waterfall
-from intrinsic.industry_beta import load_industry_betas
+from intrinsic.industry_beta import industry_for_sic, load_industry_betas
 from intrinsic.inputs import DataUnavailable
+from intrinsic.insurance_inputs import load_insurance_inputs
 from intrinsic.sec_data import is_number
 from intrinsic.ui import components as ui
 from intrinsic.ui.i18n import lang, scenario, t
@@ -42,6 +45,15 @@ def _bank_inputs(ticker):
     return load_bank_inputs(ticker.replace('.', '-'))
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _insurance_inputs(ticker, price, market_cap):
+    return load_insurance_inputs(ticker.replace('.', '-'), market={'price': price, 'market_cap': market_cap})
+
+
+def _insurer(data):
+    return data.get('kind') == 'insurer'
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def _market(ticker):
     from intrinsic.market_data import obtener_mercado
@@ -52,9 +64,13 @@ def _market(ticker):
 # Sidebar: cost of equity, growth, market price, bank assumptions
 # ------------------------------------------------------------------
 
-def _industry_beta(total_assets):
+def _industry_beta(total_assets, data=None):
     betas = load_industry_betas()
-    name = 'Bank (Money Center)' if is_number(total_assets) and total_assets >= MONEY_CENTER_ASSETS else 'Banks (Regional)'
+    if data is not None and _insurer(data):
+        name = industry_for_sic(data.get('sic'))[0] or 'Insurance (General)'
+    else:
+        name = ('Bank (Money Center)' if is_number(total_assets) and total_assets >= MONEY_CENTER_ASSETS
+                else 'Banks (Regional)')
     row = betas.get(name) or {}
     try:
         return name, float(row['levered_beta']), int(row['n_firms'])
@@ -70,17 +86,22 @@ def _sidebar(ticker, data, market, rf_loader, erp_default, terminal_default):
     rf = box.number_input(t('Risk-free rate (%)'), min_value=0.0, max_value=15.0, value=round(rf_value * 100, 2),
                           step=0.05, key='bank_rf', help=rf_source) / 100
     latest = data['history'][-1]
-    ind_name, ind_beta, n_firms = _industry_beta(latest.get('Total assets'))
+    ind_name, ind_beta, n_firms = _industry_beta(latest.get('Total assets'), data)
     raw = market.get('beta') if market else None
     blume = 0.67 * raw + 0.33 if is_number(raw) else None
     options = ['industry'] + (['regression'] if blume is not None else [])
-    basis = box.selectbox(t('Beta basis'), options, key=f'bank_beta_basis_{ticker}',
+    # Keyed by language: Streamlit keeps a selectbox's choice by its displayed label, so a translated label would
+    # silently switch the basis on every second language change.
+    basis = box.selectbox(t('Beta basis'), options, key=f'bank_beta_basis_{ticker}_{lang()}',
                           format_func=lambda o: (t('Industry: {name} (levered)', name=ind_name) if o == 'industry'
                                                  else t('Stock regression (Blume-adjusted)')))
     default_beta = ind_beta if basis == 'industry' and is_number(ind_beta) else (blume or 1.0)
-    beta_help = (t('Damodaran levered beta for {name} ({n} US firms, Jan 2026). For banks the levered beta is used '
-                   'directly: deposits are operating liabilities, so un/re-levering with debt is not meaningful.',
-                   name=ind_name, n=n_firms) if basis == 'industry'
+    beta_help = ((t('Damodaran levered beta for {name} ({n} US firms, Jan 2026). For insurers the levered beta is used '
+                    'directly: policyholder reserves are operating liabilities, so un/re-levering with debt is not '
+                    'meaningful.', name=ind_name, n=n_firms) if _insurer(data) else
+                  t('Damodaran levered beta for {name} ({n} US firms, Jan 2026). For banks the levered beta is used '
+                    'directly: deposits are operating liabilities, so un/re-levering with debt is not meaningful.',
+                    name=ind_name, n=n_firms)) if basis == 'industry'
                  else t('Yahoo regression beta {raw:.2f} with the Blume adjustment (0.67 × raw + 0.33).', raw=raw))
     beta = box.number_input(t('Beta'), min_value=0.1, max_value=3.0, value=float(round(default_beta, 2)), step=0.05,
                             key=f'bank_beta_{ticker}_{basis}', help=beta_help)
@@ -105,7 +126,8 @@ def _sidebar(ticker, data, market, rf_loader, erp_default, terminal_default):
         mbox.markdown('<div class="ix-state">' + ui.kv_rows([(t('Market price'), ui.usd(price)),
                                                              (t('Shares outstanding'), f'{shares / 1e9:,.3f} B')])
                       + '</div>', unsafe_allow_html=True)
-        mbox.caption(t('Price: Yahoo Finance. Shares: {src}, {date}.', src=data['shares_source'] or 'Yahoo Finance',
+        mbox.caption(t('Price: Yahoo Finance. Shares: {src}, {date}.',
+                       src=(t(data['shares_source']) if data['shares_source'] else 'Yahoo Finance'),
                        date=data['shares_date'] or '—'))
         price_manual = False
     else:
@@ -115,8 +137,10 @@ def _sidebar(ticker, data, market, rf_loader, erp_default, terminal_default):
                                    step=1e6, key=f'bank_shares_{ticker}')
         price_manual = True
 
-    abox = st.sidebar.expander(t('Bank assumptions'), expanded=False)
+    abox = st.sidebar.expander(t('Insurer assumptions') if _insurer(data) else t('Bank assumptions'), expanded=False)
     probe = bm.derive_assumptions(data['history'], ke, g, 'base')['drivers']
+    if _insurer(data):
+        abox.caption(t('ROE and payout are on operating earnings (equity-security gains excluded).'))
     overrides = {}
     for key, label in (('roe_start', 'ROE today (%)'), ('roe_long', 'Long-run ROE (%)'),
                        ('payout_start', 'Payout ratio today (%)')):
@@ -148,10 +172,17 @@ def _sidebar(ticker, data, market, rf_loader, erp_default, terminal_default):
 
 def _strip(slot, data, price, shares, ctx):
     latest = data['history'][-1]
+    if _insurer(data):
+        prem = is_number(latest.get('Premiums earned'))
+        mid = [(t('Premiums earned') if prem else t('Revenue'),
+                ui.usd_b(latest.get('Premiums earned') if prem else latest.get('Revenue'), 1), 'SEC EDGAR'),
+               (t('Equity portfolio'), ui.usd_b(data['portfolio'], 0) if data['portfolio'] else '—',
+                t('market value net of tax') if data['portfolio'] else t('kept in operating book'))]
+    else:
+        mid = [(t('Total assets'), ui.usd_b(latest.get('Total assets'), 0), 'SEC EDGAR'),
+               (t('Deposits'), ui.usd_b(latest.get('Deposits'), 0), 'SEC EDGAR')]
     cells = [(t('Market price · USD'), ui.usd(price), escape(ctx.get('price_source', ''))),
-             (t('Market cap'), ui.usd_b(price * shares), t('price × shares outstanding')),
-             (t('Total assets'), ui.usd_b(latest.get('Total assets'), 0), 'SEC EDGAR'),
-             (t('Deposits'), ui.usd_b(latest.get('Deposits'), 0), 'SEC EDGAR'),
+             (t('Market cap'), ui.usd_b(price * shares), t('price × shares outstanding'))] + mid + [
              (t('Financials'), f"FY{data['history'][0]['Fiscal year end'][:4]}–FY{latest['Fiscal year end'][:4]}",
               t('{n} 10-K years · FYE {fye}', n=len(data['history']), fye=escape(latest['Fiscal year end']))),
              (t('Industry (SIC)'), escape(str(data.get('sic') or '—')), escape(str(data.get('sic_description') or '')))]
@@ -172,7 +203,7 @@ def _overview(res, scen, price, data, ke, g):
       <div class="ix-hero-top">
         <div class="ix-hero-cell">{ui.tag(t('Excess return · {scen}', scen=scenario(scen).lower()), 'model')}
           <div class="ix-big model">{ui.usd(ri)}</div>
-          <div class="ix-big-sub">{t('Book value + PV of returns above the cost of equity')} {_help('Excess return model')}</div></div>
+          <div class="ix-big-sub">{t('Book value + PV of returns above the cost of equity') + (' + ' + t('equity portfolio') if data.get('portfolio') else '')} {_help('Excess return model')}</div></div>
         <div class="ix-hero-cell">{ui.tag(t('Dividend discount · {scen}', scen=scenario(scen).lower()), 'model')}
           <div class="ix-big model">{ui.usd(ddm)}</div>
           <div class="ix-big-sub">{t('PV of dividends + buybacks to common shareholders')} {_help('Dividend discount model')}</div></div>
@@ -186,12 +217,13 @@ def _overview(res, scen, price, data, ke, g):
     latest = data['history'][-1]
     pb_mkt = price / r['book_value_per_share'] if r['book_value_per_share'] > 0 else None
     ui.md('<div class="ix-metrics">'
-          + ui.metric(t('Book value / share'), ui.usd(r['book_value_per_share']), t('common equity · SEC'), '',
-                      _help('Book value'))
+          + ui.metric(t('Book value / share'), ui.usd(r['book_value_per_share']),
+                      t('adjusted book · SEC') if _insurer(data) else t('common equity · SEC'), '', _help('Book value'))
           + ui.metric(t('Justified P/B'), f"{r['justified_pb']:.2f}×", t('market P/B {pb:.2f}×', pb=pb_mkt or 0), 'model',
                       _help('Justified P/B'))
           + ui.metric(t('Cost of equity'), ui.pct(ke), t('CAPM'), '', _help('Cost of equity'))
-          + ui.metric('ROE', ui.pct(latest.get('ROE')), t('latest year'), '', _help('ROE'))
+          + ui.metric(t('Operating ROE') if _insurer(data) else 'ROE', ui.pct(latest.get('ROE')), t('latest year'), '',
+                      _help('ROE'))
           + ui.metric(t('Long-run ROE'), ui.pct(r['assumptions']['drivers']['roe_long']['value']), escape(scenario(scen)),
                       'model', _help('Long-run ROE'))
           + ui.metric(t('Model gap'), ui.pct(r['model_gap'], 1, signed=True), t('DDM vs excess return'), '',
@@ -199,15 +231,22 @@ def _overview(res, scen, price, data, ke, g):
           + '</div>')
     d = r['assumptions']['drivers']
     spread = d['roe_long']['value'] - ke
-    verdict = (t('The bank is expected to keep earning <b>{s} above</b> its cost of equity in the long run, so it is worth '
-                 'more than its book value.', s=ui.pct(spread)) if spread > 0.0005 else
-               t('In the long run the bank earns only its cost of equity, so growth adds no value and the price converges '
-                 'to book value.'))
+    verdict = (t('The company is expected to keep earning <b>{s} above</b> its cost of equity in the long run, so it is '
+                 'worth more than its book value.', s=ui.pct(spread)) if spread > 0.0005 else
+               t('In the long run the company earns only its cost of equity, so growth adds no value and the price '
+                 'converges to book value.'))
+    if _insurer(data):
+        why = [t("<b>Why not FCFF:</b> an insurer invests premiums before paying claims; policyholder reserves are operating liabilities, not financing, so free cash flow to the firm and WACC do not apply. Both models discount at the cost of equity."),
+               t("<b>Operating figures:</b> gains on equity securities, which since 2018 run through net income with the stock market, are excluded from earnings and ROE, and book value excludes AOCI (bond prices moving with interest rates).")]
+        if data.get('portfolio'):
+            why.append(t("<b>Equity portfolio at market:</b> the {p} portfolio of listed stocks (market value net of the tax on its unrealised gain) is taken out of book value and earnings and added back at that value, since it is expected to earn just its required return. The models value the rest: underwriting, investment income on float and the operating companies.",
+                         p=ui.usd_b(data['portfolio'], 0)))
+    else:
+        why = [t("<b>Why not FCFF:</b> deposits and borrowings are a bank&#39;s raw material, not financing, so free cash flow to the firm and WACC do not apply. Both models discount at the cost of equity.")]
     ui.md(f'<div class="ix-note"><div class="ix-label">{t("What this means")}</div><ul>'
           f'<li>{verdict}</li>'
-          f'<li>{t("<b>Two models, one range.</b> With perfectly consistent inputs both give the same value. Here the excess-return model follows book value and ROE, while the DDM follows the bank&#39;s actual payout policy; a large gap means today&#39;s payout and growth differ from what the ROE path implies.")}</li>'
-          f'<li>{t("<b>Why not FCFF:</b> deposits and borrowings are a bank&#39;s raw material, not financing, so free cash flow to the firm and WACC do not apply. Both models discount at the cost of equity.")}</li>'
-          '</ul></div>')
+          f'<li>{t("<b>Two models, one range.</b> With perfectly consistent inputs both give the same value. Here the excess-return model follows book value and ROE, while the DDM follows the company&#39;s actual payout policy; a large gap means today&#39;s payout and growth differ from what the ROE path implies.")}</li>'
+          + ''.join(f'<li>{w}</li>' for w in why) + '</ul></div>')
 
 
 def _forecast(res, scen, data, ke):
@@ -247,7 +286,8 @@ def _forecast(res, scen, data, ke):
     p = lambda v: f'{v * 100:.1f}%'
     body = [line('ROE', [x['roe'] for x in rows], p),
             line('Book value, start (USD B)', [x['book_begin'] for x in rows], b),
-            line('Net income to common (USD B)', [x['net_income'] for x in rows], b),
+            line('Operating earnings (USD B)' if _insurer(data) else 'Net income to common (USD B)',
+                 [x['net_income'] for x in rows], b),
             line('Excess return (USD B)', [x['excess_return'] for x in rows], b),
             line('PV of excess return (USD B)', [x['pv'] for x in rows], b),
             line('DDM: earnings growth', [x['growth'] for x in ddm_rows], p),
@@ -261,26 +301,41 @@ def _forecast(res, scen, data, ke):
 def _valuation(res, scen, data):
     r = res[scen]
     ri, ddm = r['excess_return'], r['ddm']
+    port = ri.get('portfolio') or 0.0
     ui.heading(t('Valuation bridge · {scen}', scen=escape(scenario(scen))),
                t('From book value to equity value, and from payouts to equity value'))
     _glossary(['Excess return model', 'Dividend discount model', 'Terminal value', 'Justified P/B'])
     c1, c2 = st.columns(2)
     with c1:
-        _waterfall([t('Book value'), t('PV excess returns'), t('PV terminal'), t('Equity value')],
-                   [ri['book_value'] / 1e9, ri['pv_excess'] / 1e9, ri['pv_terminal'] / 1e9, ri['equity_value'] / 1e9],
-                   ['absolute', 'relative', 'relative', 'total'], 'Excess return model (USD B)')
+        if port:
+            _waterfall([t('Operating book value'), t('PV excess returns'), t('PV terminal'), t('Equity portfolio'),
+                        t('Equity value')],
+                       [ri['book_value'] / 1e9, ri['pv_excess'] / 1e9, ri['pv_terminal'] / 1e9, port / 1e9,
+                        ri['equity_value'] / 1e9],
+                       ['absolute', 'relative', 'relative', 'relative', 'total'], 'Excess return model (USD B)')
+        else:
+            _waterfall([t('Book value'), t('PV excess returns'), t('PV terminal'), t('Equity value')],
+                       [ri['book_value'] / 1e9, ri['pv_excess'] / 1e9, ri['pv_terminal'] / 1e9, ri['equity_value'] / 1e9],
+                       ['absolute', 'relative', 'relative', 'total'], 'Excess return model (USD B)')
     with c2:
-        _waterfall([t('PV dividends + buybacks'), t('PV terminal'), t('Equity value')],
-                   [ddm['pv_payouts'] / 1e9, ddm['pv_terminal'] / 1e9, ddm['equity_value'] / 1e9],
-                   ['absolute', 'relative', 'total'], 'Dividend discount model (USD B)')
+        if port:
+            _waterfall([t('PV dividends + buybacks'), t('PV terminal'), t('Equity portfolio'), t('Equity value')],
+                       [ddm['pv_payouts'] / 1e9, ddm['pv_terminal'] / 1e9, port / 1e9, ddm['equity_value'] / 1e9],
+                       ['absolute', 'relative', 'relative', 'total'], 'Dividend discount model (USD B)')
+        else:
+            _waterfall([t('PV dividends + buybacks'), t('PV terminal'), t('Equity value')],
+                       [ddm['pv_payouts'] / 1e9, ddm['pv_terminal'] / 1e9, ddm['equity_value'] / 1e9],
+                       ['absolute', 'relative', 'total'], 'Dividend discount model (USD B)')
     sh = r['shares']
     rows = [(t('Equity value'), ui.usd_b(ri['equity_value']), ui.usd_b(ddm['equity_value'])),
             (t('Terminal value share'), f"{ri['pv_terminal'] / ri['equity_value']:.0%}",
              f"{ddm['pv_terminal'] / ddm['equity_value']:.0%}"),
             (t('Shares'), f'{sh / 1e9:,.3f} B', f'{sh / 1e9:,.3f} B'),
             (t('Value per share'), f"<b>{ui.usd(ri['per_share'])}</b>", f"<b>{ui.usd(ddm['per_share'])}</b>"),
-            (t('Implied P/B'), f"{ri['equity_value'] / ri['book_value']:.2f}×",
-             f"{ddm['equity_value'] / ri['book_value']:.2f}×")]
+            (t('Implied P/B'), f"{ri['equity_value'] / (ri['book_value'] + port):.2f}×",
+             f"{ddm['equity_value'] / (ri['book_value'] + port):.2f}×")]
+    if port:
+        rows.insert(1, (t('of which equity portfolio'), ui.usd_b(port), ui.usd_b(port)))
     ui.md(ui.html_table(['', t('Excess return'), t('Dividend discount')],
                         [('', [(k, ''), (a, ''), (b, '')]) for k, a, b in rows]))
 
@@ -297,7 +352,8 @@ def _sensitivity(data, scen, ke, g, shares, overrides, price, ticker):
     for k in kes:
         row = []
         for gg in gs:
-            out = bm.run(data['history'], k, gg, shares, scen, overrides) if k > gg and gg >= 0 else None
+            out = (bm.run(data['history'], k, gg, shares, scen, overrides, data.get('portfolio') or 0.0)
+                   if k > gg and gg >= 0 else None)
             row.append(out[model]['per_share'] if out and out['status'] == 'OK' else float('nan'))
         matrix.append(row)
     text = [[(f'<b>${x:,.0f}</b><br>{(x / price - 1) * 100:+.0f}%' if not math.isnan(x) else 'N/A') for x in r]
@@ -332,7 +388,7 @@ def _risk_return(data, scen, g, shares, overrides, price, capm):
     required = sml.required_return(rf, beta, erp)
 
     def value_at(k):
-        out = bm.run(data['history'], k, g, shares, scen, overrides)
+        out = bm.run(data['history'], k, g, shares, scen, overrides, data.get('portfolio') or 0.0)
         return out['excess_return']['per_share'] if out['status'] == 'OK' else None
 
     implied = sml.implied_wacc(value_at, price, lo=g + 0.0025, hi=0.40, tol=1e-5)
@@ -416,8 +472,11 @@ def _final_verdict(ticker, res, price, ke):
 def _model_data(res, scen, data):
     ui.heading(t('Model & data'), t('Where each assumption comes from, and the SEC history behind it'))
     ui.md(f'<div class="ix-state-card"><h4>{t("Not validated")}</h4>'
-          + t('The bank engine has not been backtested out of sample yet (the FCFF model has). Fade speed and scenario '
-              'rules are economic assumptions. Use the range, not a single number.') + '</div>')
+          + (t('The insurer engine has not been backtested out of sample yet (the FCFF model has). Fade speed, scenario '
+               'rules, the 21% tax on portfolio gains and, when untagged, the portfolio dividend yield are economic '
+               'assumptions. Use the range, not a single number.') if _insurer(data) else
+             t('The bank engine has not been backtested out of sample yet (the FCFF model has). Fade speed and scenario '
+               'rules are economic assumptions. Use the range, not a single number.')) + '</div>')
     a = res[scen]['assumptions']
     ui.heading(t('Assumptions and where each comes from'))
     legend = ''.join(ui.tag(t(SOURCE_BADGE[k]), SOURCE_TAG_KIND[k]) + ' ' for k in SOURCE_BADGE)
@@ -436,42 +495,54 @@ def _model_data(res, scen, data):
         st.caption(t('Explanations in this table come from the valuation engine and are shown in English.'))
 
     ui.heading(t('SEC history (USD B unless noted)'))
-    keys = [('Net income to common', 'b'), ('Common equity', 'b'), ('Tangible common equity', 'b'), ('ROE', 'p'),
-            ('ROTCE', 'p'), ('Common dividends', 'b'), ('Buybacks', 'b'), ('Payout ratio', 'p'),
-            ('Net interest income', 'b'), ('Noninterest income', 'b'), ('Credit provisions', 'b'),
-            ('Total assets', 'b'), ('Deposits', 'b'), ('Diluted EPS', 'u')]
+    if _insurer(data):
+        keys = [('Reported net income to common', 'b'), ('Investment gains', 'b', 'Gains on equity securities'),
+                ('Portfolio dividends (after tax)', 'b'), ('Net income to common', 'b', 'Operating earnings'),
+                ('Reported common equity', 'b'), ('AOCI', 'b'), ('Equity portfolio (after tax)', 'b'),
+                ('Common equity', 'b', 'Operating book value'), ('ROE', 'p', 'Operating ROE'),
+                ('Premiums earned', 'b'), ('Net investment income', 'b'), ('Revenue', 'b'),
+                ('Common dividends', 'b'), ('Buybacks', 'b'), ('Payout ratio', 'p'), ('Total assets', 'b')]
+    else:
+        keys = [('Net income to common', 'b'), ('Common equity', 'b'), ('Tangible common equity', 'b'), ('ROE', 'p'),
+                ('ROTCE', 'p'), ('Common dividends', 'b'), ('Buybacks', 'b'), ('Payout ratio', 'p'),
+                ('Net interest income', 'b'), ('Noninterest income', 'b'), ('Credit provisions', 'b'),
+                ('Total assets', 'b'), ('Deposits', 'b'), ('Diluted EPS', 'u')]
     hist = data['history']
     fmt = {'b': lambda v: f'{v / 1e9:,.1f}', 'p': lambda v: f'{v * 100:.1f}%', 'u': lambda v: f'${v:,.2f}'}
-    body = [('', [(t(k), '')] + [((fmt[f](r[k]) if is_number(r.get(k)) else '—'), '') for r in hist]) for k, f in keys]
+    body = [('', [(t(spec[2] if len(spec) > 2 else spec[0]), '')]
+             + [((fmt[spec[1]](r[spec[0]]) if is_number(r.get(spec[0])) else '—'), '') for r in hist]) for spec in keys]
     ui.md(ui.html_table([''] + [r['Fiscal year end'][:4] for r in hist], body))
     notes = list(data.get('warnings', [])) + [f'{k}: {v}' for k, v in sorted(data.get('provenance', {}).items())]
     ui.md(f'<div class="ix-note"><div class="ix-label">{t("SEC tags and data notes")}</div><ul>'
           + ''.join(f'<li>{escape(n)}</li>' for n in notes) + '</ul></div>')
     st.caption(t('Method: excess-return (residual income) model and two-stage dividend discount model on total payout, '
-                 'both discounted at the CAPM cost of equity; ROE fades from its recent level to its long-run level.'))
+                 'both discounted at the CAPM cost of equity; ROE fades from its recent level to its long-run level.')
+               + (' ' + t('Insurers: operating earnings exclude gains on equity securities, book value excludes AOCI, and '
+                          'a large equity portfolio is valued at market net of tax.') if _insurer(data) else ''))
 
 
 # ------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------
 
-def render_bank(ticker, header_slot, rf_loader, erp_default, terminal_default):
+def render_bank(ticker, header_slot, rf_loader, erp_default, terminal_default, kind='bank'):
+    try:
+        market = _market(ticker)
+    except Exception:
+        market = {}
     try:
         with st.spinner(t('Loading SEC financial statements...')):
-            data = _bank_inputs(ticker)
+            data = (_insurance_inputs(ticker, market.get('price'), market.get('market_cap')) if kind == 'insurer'
+                    else _bank_inputs(ticker))
     except DataUnavailable as exc:
         ui.state_card(t('Not enough SEC data to value this company'), escape(str(exc)))
         return
     except Exception as exc:
         st.error(t('SEC financial data unavailable for {ticker}: {err}', ticker=ticker, err=exc))
         return
-    try:
-        market = _market(ticker)
-    except Exception:
-        market = {}
     ke, g, price, shares, price_manual, overrides, capm = _sidebar(ticker, data, market, rf_loader, erp_default,
                                                                     terminal_default)
-    res = bm.run_all(data['history'], ke, g, shares, overrides)
+    res = bm.run_all(data['history'], ke, g, shares, overrides, data.get('portfolio') or 0.0)
     _strip(header_slot, data, price, shares,
            {'price_source': t('Manual input') if price_manual else 'Yahoo Finance'})
     nav, pick = st.columns([3, 2], vertical_alignment='bottom')
@@ -489,7 +560,8 @@ def render_bank(ticker, header_slot, rf_loader, erp_default, terminal_default):
         return
     if overrides:
         ui.md('<div class="ix-quality">' + ui.tag(t('Your case'), 'user') + '<span>'
-              + t('You are viewing YOUR case: bank assumptions changed from model values.') + '</span></div>')
+              + (t('You are viewing YOUR case: insurer assumptions changed from model values.') if _insurer(data) else
+                 t('You are viewing YOUR case: bank assumptions changed from model values.')) + '</span></div>')
     if section == 'Forecast':
         _forecast(res, scen, data, ke)
     elif section == 'Valuation':

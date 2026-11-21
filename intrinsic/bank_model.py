@@ -67,13 +67,13 @@ def derive_assumptions(history, ke, terminal_growth, scenario='base', overrides=
     roe_base_now = mean(recent)
     roe_hist_median = median(roes)
     if scenario == 'conservative':
-        roe_now, roe_now_note = min(roe_base_now, _pct(roes, 0.25)), '25th percentile of the bank\'s own ROE history (or the 3-year mean if lower)'
+        roe_now, roe_now_note = min(roe_base_now, _pct(roes, 0.25)), '25th percentile of the company\'s own ROE history (or the 3-year mean if lower)'
         roe_long, roe_long_note = ke, 'Long-run ROE = cost of equity: excess returns are competed away'
     elif scenario == 'optimistic':
         roe_now, roe_now_note = max(roe_base_now, roes[-1]), 'Latest-year ROE (or the 3-year mean if higher)'
-        roe_long, roe_long_note = _pct(roes, 0.75), '75th percentile of the bank\'s own ROE history'
+        roe_long, roe_long_note = _pct(roes, 0.75), '75th percentile of the company\'s own ROE history'
     else:
-        roe_now, roe_now_note = roe_base_now, 'Mean ROE of the last 3 years (smooths the credit cycle)'
+        roe_now, roe_now_note = roe_base_now, 'Mean ROE of the last 3 years (smooths the credit or underwriting cycle)'
         roe_long, roe_long_note = roe_hist_median, f'Median ROE of the last {len(roes)} years'
     src_now = src_long = 'data'
     if scenario == 'conservative':
@@ -100,7 +100,7 @@ def derive_assumptions(history, ke, terminal_growth, scenario='base', overrides=
         'roe_start': {'value': roe_now, 'source': src_now, 'note': roe_now_note},
         'roe_long': {'value': roe_long, 'source': src_long, 'note': roe_long_note},
         'fade_speed': {'value': FADE, 'source': 'assumption',
-                       'note': 'Share of the ROE gap left each year (≈5% after 10 years); not panel-calibrated for banks'},
+                       'note': 'Share of the ROE gap left each year (≈5% after 10 years); not panel-calibrated for banks or insurers'},
         'book_growth_start': {'value': b0, 'source': 'data',
                               'note': f'Median common-equity growth, last {len(growths)} years (clipped 0–8%)'},
         'payout_start': {'value': p0, 'source': 'user' if 'payout_start' in overrides else 'data',
@@ -109,9 +109,11 @@ def derive_assumptions(history, ke, terminal_growth, scenario='base', overrides=
                                'note': 'ROE today × (1 − payout today), clipped 0–12%'},
         'stable_payout': {'value': stable_payout, 'source': 'assumption', 'note': '1 − g / long-run ROE'},
         'normalized_earnings': {'value': e0, 'source': 'data',
-                                'note': f'Mean net income to common, last {len(nis)} years, scaled by starting ROE / 3-year mean ROE'},
+                                'note': f'Mean {latest.get("Earnings basis", "net income to common")}, last {len(nis)} '
+                                        'years, scaled by starting ROE / 3-year mean ROE'},
         'book_value': {'value': latest['Common equity'], 'source': 'data',
-                       'note': f'Common equity at {latest["Fiscal year end"]} (total equity − preferred)'},
+                       'note': f'{latest.get("Book basis", "Common equity")} at {latest["Fiscal year end"]}'
+                               + ('' if 'Book basis' in latest else ' (total equity − preferred)')},
     }
     blockers = []
     if ke <= g:
@@ -168,8 +170,11 @@ def dividend_discount(a, ke, g):
             'equity_value': pv_sum + pv_tv}
 
 
-def run(history, ke, terminal_growth, shares, scenario='base', overrides=None):
-    """Both models for one scenario. Values are total common equity (USD) and per share."""
+def run(history, ke, terminal_growth, shares, scenario='base', overrides=None, portfolio=0.0):
+    """Both models for one scenario. Values are total common equity (USD) and per share.
+
+    `portfolio` (insurers): an equity portfolio held at market value net of deferred tax, kept OUT of the history's
+    book value and earnings; it earns its required return, so it adds its value to both models unchanged."""
     a = derive_assumptions(history, ke, terminal_growth, scenario, overrides)
     out = {'scenario': scenario, 'assumptions': a, 'status': 'BLOCKED' if a['blockers'] else 'OK'}
     if a['blockers'] or not _num(shares) or shares <= 0:
@@ -180,8 +185,10 @@ def run(history, ke, terminal_growth, shares, scenario='base', overrides=None):
     ri = excess_return(a, ke, terminal_growth)
     ddm = dividend_discount(a, ke, terminal_growth)
     for m in (ri, ddm):
+        m['portfolio'] = portfolio
+        m['equity_value'] += portfolio
         m['per_share'] = m['equity_value'] / shares
-    bv = a['drivers']['book_value']['value']
+    bv = a['drivers']['book_value']['value'] + portfolio
     out.update({'excess_return': ri, 'ddm': ddm, 'shares': shares,
                 'book_value_per_share': bv / shares,
                 'justified_pb': ri['equity_value'] / bv if bv > 0 else None,
@@ -190,5 +197,5 @@ def run(history, ke, terminal_growth, shares, scenario='base', overrides=None):
     return out
 
 
-def run_all(history, ke, terminal_growth, shares, overrides=None):
-    return {s: run(history, ke, terminal_growth, shares, s, overrides) for s in SCENARIOS}
+def run_all(history, ke, terminal_growth, shares, overrides=None, portfolio=0.0):
+    return {s: run(history, ke, terminal_growth, shares, s, overrides, portfolio) for s in SCENARIOS}
