@@ -862,7 +862,7 @@ def _reverse_dcf(ticker, results, scen, data, market_price, wacc, g, overrides, 
     go_, mo, wo = out['growth'], out['margin'], out['wacc']
     lo_g, hi_g = go_['bounds'] if 'bounds' in go_ else rv.GROWTH_PREMIUM_BOUNDS
     lo_m, hi_m = mo['bounds'] if 'bounds' in mo else rv.MARGIN_BOUNDS
-    grow_req = (t('{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: average growth {c:.1%} a year',
+    grow_req = (t('{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: {n}-year CAGR {c:.1%}',
                   pp=go_['root'] * 100, n=n, c=icagr) if go_['status'] == 'solved' else
                 t('{why} (premium tested from {lo:+.0f} to {hi:+.0f} pp a year)', why=unsolved(go_), lo=lo_g * 100,
                   hi=hi_g * 100))
@@ -873,13 +873,16 @@ def _reverse_dcf(ticker, results, scen, data, market_price, wacc, g, overrides, 
     table = ui.html_table(
         [t('Variable'), t('Intrinsic assumption'), t('Market-implied requirement'), t('Status')],
         [('', [(t('Revenue growth'), ''),
-               (t('Average {c:.1%} a year over {n} years (year 1: {g1:.1%})', c=cagr, n=n, g1=rows[0]['growth']), ''),
+               (t('{n}-year CAGR {c:.1%} (year 1: {g1:.1%})', c=cagr, n=n, g1=rows[0]['growth']), ''),
                (grow_req, ''), (status_tag(go_), '')]),
          ('', [(t('Operating margin (long run)'), ''),
                (t('{mT:.1%} target · {mH:.1%} in year {n}', mT=mT, mH=mH, n=n), ''), (marg_req, ''), (status_tag(mo), '')]),
          ('', [('WACC', ''), (f'{wacc:.2%}', ''), (wacc_req, ''), (status_tag(wo), '')])])
     ui.heading(t('Implied assumptions'), t('Each row is solved on its own, holding everything else at Intrinsic\'s values'))
     ui.md(table)
+    st.caption(t('**{n}-Year Compound Annual Growth Rate (CAGR):** the constant annual growth rate equivalent to the '
+                 'projected revenue path over the {n} years. It does not mean the company grows at exactly that rate '
+                 'every year.', n=n))
     hist_m = [r.get('EBITA margin', r.get('EBIT margin')) for r in data.get('history') or []]
     hist_m = [x for x in hist_m if is_number(x)]
     margin_rows = [(t('Historical (latest year)'), f'{m0:.1%}' if is_number(m0) else '—'),
@@ -932,8 +935,8 @@ def _reverse_dcf(ticker, results, scen, data, market_price, wacc, g, overrides, 
     if go_['status'] == 'solved':
         more = go_['root'] > 0
         notes.append(t('<strong>Growth:</strong> to justify {p}, {name} would need revenue growth {pp:.1f} points a '
-                       'year {dir} Intrinsic\'s forecast in years 1–5 (average {ic:.1%} a year over {n} years instead of '
-                       '{c:.1%}), with WACC, margins and reinvestment unchanged.', p=ui.usd(market_price), name=escape(name),
+                       'year {dir} Intrinsic\'s forecast in years 1–5 ({n}-year CAGR of {ic:.1%} instead of {c:.1%}), with '
+                       'WACC, margins and reinvestment unchanged.', p=ui.usd(market_price), name=escape(name),
                        pp=abs(go_['root']) * 100, dir=t('above') if more else t('below'), ic=icagr, n=n, c=cagr))
     else:
         notes.append(t('<strong>Growth:</strong> {why}: within a premium of {lo:+.0f} to {hi:+.0f} points a year, '

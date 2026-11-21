@@ -213,22 +213,26 @@ ES = {
         'Precargados con los valores del Modelo 27. Cambia cualquier número para correr tu propio caso; los datos '
         'cambiados se marcan como "Tu dato".',
     # ---- reverse DCF
+    '{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: {n}-year CAGR {c:.1%}':
+        '{pp:+.1f} pp al año en los años 1–5, bajando a 0 en el año {n}: CAGR a {n} años de {c:.1%}',
+    '{n}-year CAGR {c:.1%} (year 1: {g1:.1%})':
+        'CAGR a {n} años de {c:.1%} (año 1: {g1:.1%})',
+    "<strong>Growth:</strong> to justify {p}, {name} would need revenue growth {pp:.1f} points a year {dir} Intrinsic's forecast in years 1–5 ({n}-year CAGR of {ic:.1%} instead of {c:.1%}), with WACC, margins and reinvestment unchanged.":
+        '<strong>Crecimiento:</strong> para justificar {p}, {name} necesitaría un crecimiento de ingresos {pp:.1f} puntos al año {dir} del pronóstico de Intrinsic en los años 1–5 (CAGR a {n} años de {ic:.1%} en lugar de {c:.1%}), con el WACC, los márgenes y la reinversión sin cambios.',
+    '**{n}-Year Compound Annual Growth Rate (CAGR):** the constant annual growth rate equivalent to the projected revenue path over the {n} years. It does not mean the company grows at exactly that rate every year.':
+        '**Crecimiento anual compuesto (CAGR) a {n} años:** representa la tasa de crecimiento anual constante equivalente a la trayectoria proyectada de ingresos durante los {n} años. No significa que la empresa crezca exactamente a esa tasa cada año.',
     '{mT:.1%} target · {mH:.1%} in year {n}': '{mT:.1%} objetivo · {mH:.1%} en el año {n}',
     'Intrinsic value': 'Valor intrínseco',
     "<strong>Discount rate:</strong> with Intrinsic's cash flows, the price corresponds to a WACC of {x:.2%} instead of {w:.2%}. This is a diagnostic of the expectations in the price, not the company's true cost of capital.":
         '<strong>Tasa de descuento:</strong> con los flujos de caja de Intrinsic, el precio corresponde a un WACC de {x:.2%} en lugar de {w:.2%}. Es un diagnóstico de las expectativas que hay en el precio, no el verdadero costo de capital de la empresa.',
     '<strong>Discount rate:</strong> {why}.':
         '<strong>Tasa de descuento:</strong> {why}.',
-    "<strong>Growth:</strong> to justify {p}, {name} would need revenue growth {pp:.1f} points a year {dir} Intrinsic's forecast in years 1–5 (average {ic:.1%} a year over {n} years instead of {c:.1%}), with WACC, margins and reinvestment unchanged.":
-        '<strong>Crecimiento:</strong> para justificar {p}, {name} necesitaría un crecimiento de ingresos {pp:.1f} puntos al año {dir} del pronóstico de Intrinsic en los años 1–5 (promedio de {ic:.1%} al año durante {n} años en lugar de {c:.1%}), con el WACC, los márgenes y la reinversión sin cambios.',
     '<strong>Growth:</strong> {why}: within a premium of {lo:+.0f} to {hi:+.0f} points a year, growth alone cannot reproduce {p} with the other assumptions unchanged.':
         '<strong>Crecimiento:</strong> {why}: con una prima entre {lo:+.0f} y {hi:+.0f} puntos al año, el crecimiento por sí solo no reproduce {p} con los demás supuestos sin cambios.',
     "<strong>Margin:</strong> with Intrinsic's revenue path, the price requires a long-run operating margin of {x:.1%}, against {m:.1%} assumed and {m0:.1%} in the latest year.":
         '<strong>Margen:</strong> con la trayectoria de ingresos de Intrinsic, el precio requiere un margen operativo de largo plazo de {x:.1%}, frente al {m:.1%} supuesto y al {m0:.1%} del último año.',
     "<strong>Margin:</strong> {why}: no long-run margin between {lo:.0%} and {hi:.0%} reproduces {p} with Intrinsic's revenue path.":
         '<strong>Margen:</strong> {why}: ningún margen de largo plazo entre {lo:.0%} y {hi:.0%} reproduce {p} con la trayectoria de ingresos de Intrinsic.',
-    'Average {c:.1%} a year over {n} years (year 1: {g1:.1%})':
-        'Promedio de {c:.1%} al año durante {n} años (año 1: {g1:.1%})',
     'Did not converge':
         'No convergió',
     'Each requirement is solved independently with brentq on f(x) = DCF price(x) − market price, inside fixed economic bounds that are never widened. These are the expectations embedded in the price, not forecasts, and a gap between price and value is not by itself a buy or sell signal.':
@@ -303,8 +307,6 @@ ES = {
         'usado por Intrinsic',
     '{p:+.1%} of the intrinsic value':
         '{p:+.1%} del valor intrínseco',
-    '{pp:+.1f} pp a year in years 1–5, tapering to 0 by year {n}: average growth {c:.1%} a year':
-        '{pp:+.1f} pp al año en los años 1–5, bajando a 0 en el año {n}: crecimiento promedio de {c:.1%} al año',
     '{scen} scenario':
         'escenario {scen}',
     '{why} (premium tested from {lo:+.0f} to {hi:+.0f} pp a year)':
