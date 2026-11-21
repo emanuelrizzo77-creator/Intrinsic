@@ -136,9 +136,11 @@ def render_verdict(prices, market_price, reasons, key, chart, simulation=None):
                        '±{w:.0f} point (manual discount rate) and terminal growth ±{g:.0f} point. The revenue and margin '
                        'errors are measured; the discount-rate and growth spreads are assumptions.',
                        w=(sim['inputs']['wacc_sd'] or 0) * 100, g=sim['inputs']['g_half_range'] * 100))
-        notes.append(t('Probabilities are conditional on the model and not calibrated against realised returns. The buy '
-                       'and sell zones are thresholds on the model value (market price ± the margin), not prices to '
-                       'trade at.'))
+        notes.append(t('Probabilities are conditional on the model. In a backtest of 756 past valuations of 129 '
+                       'companies (2012-2020), higher probabilities ranked later returns only weakly, Buy signals did '
+                       'not beat the S&P 500 and the clearest signal was at the low end: the lowest probabilities '
+                       'underperformed. The buy and sell zones are thresholds on the model value (market price ± the '
+                       'margin), not prices to trade at.'))
     else:
         notes += [t('Probabilities are conditional on the model\'s assumptions: base is the median and the conservative '
                     'and optimistic cases are placed at the 20th and 80th percentiles. They are not calibrated against '

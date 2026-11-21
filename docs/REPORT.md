@@ -62,7 +62,7 @@ assumption, and every claim about accuracy backed by an out-of-sample test.**
 ```
 
 The code is a Python package (`intrinsic/`) with a Streamlit front end (`app.py`), a `validation/` folder with
-every calibration and test script, dated data snapshots in `data/`, and 79 unit tests run by GitHub Actions on
+every calibration and test script, dated data snapshots in `data/`, and 181 unit tests run by GitHub Actions on
 every push. Earlier iterations are kept, unused, in `archive/`.
 
 ## 4. Data pipeline
@@ -196,7 +196,10 @@ median and less than half that of extrapolating today's growth.
 ### 7.4 Coverage beyond the Top 25
 
 The dashboard is fully tested on its Top 25 list (22 with the FCFF model; JPMorgan and Bank of America with
-the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). `validation/universe_coverage.py` samples random NYSE/Nasdaq companies, one listing
+the bank engine; Berkshire Hathaway, filed as an insurer, is out of scope). Its 22 FCFF valuations are frozen as a regression
+baseline (`validation/top25_baseline.py`, November 2026): the SEC inputs are stored in `tests/fixtures`, and a unit
+test fails if the engine, the calibration or the Monte Carlo error pool moves any status, scenario price or simulated
+quantile, so extending the engine to more companies cannot silently change these 22. `validation/universe_coverage.py` samples random NYSE/Nasdaq companies, one listing
 per company, and runs the same steps as the dashboard. On 60 non-financial companies: **40 valued (67%)**, up
 from 22 (37%) before the path to profitability and the foreign-filer adapter; 7 refused as development stage, 6
 for unusable depreciation data, 3 with no revenue yet, 2 with under three years of history, 1 for a
@@ -386,11 +389,12 @@ The dashboard runs live at https://intrinsic-dcf.streamlit.app. To run it locall
 pip install -r requirements.txt
 export INTRINSIC_SEC_USER_AGENT="Intrinsic your.name@example.com"
 streamlit run app.py                               # the dashboard
-python -m unittest discover -s tests               # 79 unit tests
+python -m unittest discover -s tests               # 181 unit tests
 python -m validation.calibrate_fade --n 500        # rebuild the panel and calibration
 python -m validation.final_validation              # score the frozen design on fresh companies
 python -m validation.compare_regime_anchor         # a pre-registered anchor test
 python -m validation.universe_coverage             # coverage of the SEC universe
+python -m validation.top25_baseline check          # engine vs the frozen Top 25 baseline (offline)
 ```
 
 Data: SEC EDGAR (public domain); Yahoo Finance via `yfinance`; Aswath Damodaran, NYU Stern — industry betas,

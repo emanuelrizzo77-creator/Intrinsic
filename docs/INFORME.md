@@ -62,7 +62,7 @@ afirmación sobre su precisión respaldada por una prueba fuera de muestra.**
 ```
 
 El código es un paquete de Python (`intrinsic/`) con una interfaz en Streamlit (`app.py`), una carpeta
-`validation/` con todos los scripts de calibración y prueba, datos de referencia fechados en `data/` y 79 tests
+`validation/` con todos los scripts de calibración y prueba, datos de referencia fechados en `data/` y 181 tests
 unitarios que GitHub Actions corre en cada push. Las versiones anteriores se conservan, sin uso, en `archive/`.
 
 ## 4. Pipeline de datos
@@ -204,7 +204,11 @@ la mediana histórica y menos de la mitad que el de extrapolar el crecimiento ac
 ### 7.4 Cobertura más allá del Top 25
 
 El dashboard está probado a fondo con su lista Top 25 (22 con el modelo FCFF; JPMorgan y Bank of America con el
-motor bancario; Berkshire Hathaway, registrada como aseguradora, queda fuera de alcance). `validation/universe_coverage.py` toma empresas al azar de NYSE y Nasdaq,
+motor bancario; Berkshire Hathaway, registrada como aseguradora, queda fuera de alcance). Sus 22 valoraciones FCFF quedan congeladas
+como referencia de regresión (`validation/top25_baseline.py`, noviembre de 2026): los datos de la SEC se guardan en
+`tests/fixtures` y una prueba unitaria falla si el motor, la calibración o el conjunto de errores del Monte Carlo
+cambian algún estado, precio de escenario o cuantil simulado, de modo que ampliar el motor a más empresas no puede
+cambiar estas 22 sin que se note. `validation/universe_coverage.py` toma empresas al azar de NYSE y Nasdaq,
 una acción por empresa, y repite los mismos pasos que el dashboard. Con 60 empresas no financieras: **40
 valoradas (67%)**, frente a 22 (37%) antes del camino a la rentabilidad y del adaptador de emisores extranjeros;
 7 rechazadas por estar en etapa de desarrollo, 6 por datos de depreciación inutilizables, 3 sin ingresos todavía,
@@ -411,11 +415,12 @@ El dashboard funciona en vivo en https://intrinsic-dcf.streamlit.app. Para corre
 pip install -r requirements.txt
 export INTRINSIC_SEC_USER_AGENT="Intrinsic tu.nombre@ejemplo.com"
 streamlit run app.py                               # el dashboard
-python -m unittest discover -s tests               # 79 tests unitarios
+python -m unittest discover -s tests               # 181 tests unitarios
 python -m validation.calibrate_fade --n 500        # reconstruir el panel y la calibración
 python -m validation.final_validation              # evaluar el diseño congelado con empresas nuevas
 python -m validation.compare_regime_anchor         # una prueba de ancla registrada de antemano
 python -m validation.universe_coverage             # cobertura del universo de la SEC
+python -m validation.top25_baseline check          # motor frente a la referencia congelada del Top 25 (sin conexión)
 ```
 
 Datos: SEC EDGAR (dominio público); Yahoo Finance mediante `yfinance`; Aswath Damodaran, NYU Stern — betas por

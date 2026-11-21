@@ -191,7 +191,7 @@ intrinsic/              valuation engine
   ui/                   design system (theme.py), HTML components and English/Spanish translations (i18n.py)
 validation/             calibration, out-of-sample tests and universe coverage (results in validation/results/)
 data/                   calibration, Damodaran snapshots, SEC company list
-tests/                  unit tests (179), including translation coverage
+tests/                  unit tests (181), including translation coverage
 docs/                   technical report (EN/ES, Markdown and PDF) and figures
 archive/                earlier iterations, not used (see archive/README.md)
 ```
@@ -213,6 +213,7 @@ python -m validation.compare_regime_anchor        # re-run an anchor test from t
 python -m validation.calibrate_fade --n 500       # rebuild the panel and calibration (downloads SEC data)
 python -m validation.final_validation             # re-score the frozen design on fresh companies
 python -m validation.top25_check                  # data and model readiness for the dashboard universe
+python -m validation.top25_baseline check         # engine vs the frozen Top 25 baseline (offline; also a unit test)
 python -m validation.universe_coverage            # how much of the SEC universe the dashboard can value
 ```
 

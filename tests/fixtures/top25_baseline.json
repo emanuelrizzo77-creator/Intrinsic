@@ -1,0 +1,366 @@
+{
+ "created_utc": "2026-11-21T13:35:31+00:00",
+ "wacc": 0.09,
+ "terminal_growth": 0.025,
+ "mc_draws": 200,
+ "companies": {
+  "MSFT": {
+   "scenarios": {
+    "conservative": 194.12445111375428,
+    "base": 291.22364612586,
+    "optimistic": 371.2608867111419
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 176.41253641183928,
+    "p50": 269.05965502531495,
+    "p90": 423.4424561789049,
+    "distress_share": 0.005
+   }
+  },
+  "AAPL": {
+   "scenarios": {
+    "conservative": 92.61204732730057,
+    "base": 163.2039591746993,
+    "optimistic": 231.6582222739405
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 89.87850905429613,
+    "p50": 147.25565451145815,
+    "p90": 249.42710591849107,
+    "distress_share": 0.005
+   }
+  },
+  "NVDA": {
+   "scenarios": {
+    "conservative": 16.665606480082143,
+    "base": 66.94896680726053,
+    "optimistic": 515.3820455847784
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 13.648290522853458,
+    "p50": 78.86312562989013,
+    "p90": 1634.1731083985899,
+    "distress_share": 0.075
+   }
+  },
+  "GOOGL": {
+   "scenarios": {
+    "conservative": 87.05635982260168,
+    "base": 147.1200013708596,
+    "optimistic": 211.88756838006833
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 89.80758326243381,
+    "p50": 136.153468739837,
+    "p90": 223.30561292888518,
+    "distress_share": 0.005
+   }
+  },
+  "AMZN": {
+   "scenarios": {
+    "conservative": 23.439709657959142,
+    "base": 62.80805893927936,
+    "optimistic": 125.90475961071357
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 25.29247129901173,
+    "p50": 64.25552374271328,
+    "p90": 136.1728030924062,
+    "distress_share": 0.06
+   }
+  },
+  "META": {
+   "scenarios": {
+    "conservative": 228.02590190267117,
+    "base": 451.77656622592207,
+    "optimistic": 742.2866512487526
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 269.29586348590607,
+    "p50": 419.0885539917653,
+    "p90": 664.0979229910529,
+    "distress_share": 0.005
+   }
+  },
+  "AVGO": {
+   "scenarios": {
+    "conservative": 23.945602984358196,
+    "base": 78.06938151998945,
+    "optimistic": 151.17085427735577
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 38.875695932427504,
+    "p50": 70.40270903861962,
+    "p90": 120.46827223178981,
+    "distress_share": 0.005
+   }
+  },
+  "TSLA": {
+   "scenarios": {
+    "conservative": null,
+    "base": 30.170343430854736,
+    "optimistic": 141.16886953130194
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 15.840601112364023,
+    "p50": 30.126235825860174,
+    "p90": 58.984878658325144,
+    "distress_share": 0.06
+   }
+  },
+  "WMT": {
+   "scenarios": {
+    "conservative": 16.609655224491007,
+    "base": 38.22302586391759,
+    "optimistic": 61.44948683511705
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 0.0,
+    "p50": 40.18921736374893,
+    "p90": 130.44708303584463,
+    "distress_share": 0.085
+   }
+  },
+  "LLY": {
+   "scenarios": {
+    "conservative": 126.16527114407089,
+    "base": 299.4943917677509,
+    "optimistic": 768.6644613586117
+   },
+   "status": "DEGRADED",
+   "blockers": [],
+   "degradations": [
+    "No OperatingIncomeLoss tag: EBIT derived as pretax income + interest expense \u2212 interest income (includes other non-operating items)"
+   ],
+   "mc": {
+    "p10": 100.66006025244232,
+    "p50": 328.19644393672127,
+    "p90": 1137.3785369487434,
+    "distress_share": 0.06
+   }
+  },
+  "V": {
+   "scenarios": {
+    "conservative": 304976625659.8803,
+    "base": 452774042503.66235,
+    "optimistic": 542200288349.8613
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 235132902825.97064,
+    "p50": 408529844577.27435,
+    "p90": 651892255562.8123,
+    "distress_share": 0.005
+   }
+  },
+  "MA": {
+   "scenarios": {
+    "conservative": 89.9515953373905,
+    "base": 304.62969640691074,
+    "optimistic": 664.5558478724926
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 155.99153948111535,
+    "p50": 274.898955297496,
+    "p90": 445.95008024700496,
+    "distress_share": 0.005
+   }
+  },
+  "XOM": {
+   "scenarios": {
+    "conservative": null,
+    "base": 85.60062606242336,
+    "optimistic": 377.4117257948622
+   },
+   "status": "DEGRADED",
+   "blockers": [],
+   "degradations": [
+    "No OperatingIncomeLoss tag: EBIT derived as pretax income + interest expense \u2212 interest income (includes other non-operating items)"
+   ],
+   "mc": {
+    "p10": 44.02885730685074,
+    "p50": 88.37546050707914,
+    "p90": 177.87977072803042,
+    "distress_share": 0.04
+   }
+  },
+  "JNJ": {
+   "scenarios": {
+    "conservative": 102.60064381534949,
+    "base": 166.64480930413922,
+    "optimistic": 222.607964342852
+   },
+   "status": "DEGRADED",
+   "blockers": [],
+   "degradations": [
+    "No OperatingIncomeLoss tag: EBIT derived as pretax income + interest expense \u2212 interest income (includes other non-operating items)"
+   ],
+   "mc": {
+    "p10": 89.07018886001104,
+    "p50": 151.01292250920454,
+    "p90": 262.5790678268833,
+    "distress_share": 0.005
+   }
+  },
+  "ORCL": {
+   "scenarios": {
+    "conservative": 38.69812820635289,
+    "base": 74.90601172399496,
+    "optimistic": 108.58736143668074
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 34.290081557561095,
+    "p50": 67.44551913815268,
+    "p90": 129.39388222223923,
+    "distress_share": 0.005
+   }
+  },
+  "COST": {
+   "scenarios": {
+    "conservative": 158.49382598926374,
+    "base": 336.5865613151035,
+    "optimistic": 528.6049610827866
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 30.88471222495483,
+    "p50": 348.93815546657356,
+    "p90": 1053.3776680762637,
+    "distress_share": 0.1
+   }
+  },
+  "HD": {
+   "scenarios": {
+    "conservative": 163.2398768212257,
+    "base": 272.9860464045763,
+    "optimistic": 356.3993793591023
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 119.46362104642441,
+    "p50": 257.23218413105946,
+    "p90": 512.2637286149112,
+    "distress_share": 0.035
+   }
+  },
+  "PG": {
+   "scenarios": {
+    "conservative": 58.45818908710013,
+    "base": 109.356645280611,
+    "optimistic": 154.64891501432842
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 54.292457217438695,
+    "p50": 101.2180377235145,
+    "p90": 185.02038898715196,
+    "distress_share": 0.005
+   }
+  },
+  "ABBV": {
+   "scenarios": {
+    "conservative": 57.6312031517575,
+    "base": 158.4176408713533,
+    "optimistic": 277.6813177486395
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 70.95195101464373,
+    "p50": 139.80766797497222,
+    "p90": 256.14625342814725,
+    "distress_share": 0.005
+   }
+  },
+  "NFLX": {
+   "scenarios": {
+    "conservative": 9.892535003117043,
+    "base": 33.02749571840631,
+    "optimistic": 63.820056744270374
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 16.84164489793233,
+    "p50": 30.412798464350853,
+    "p90": 55.437169632482544,
+    "distress_share": 0.01
+   }
+  },
+  "KO": {
+   "scenarios": {
+    "conservative": 21.135649793326007,
+    "base": 39.46893476540436,
+    "optimistic": 56.73491216659656
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 20.908338986355812,
+    "p50": 35.77642518645247,
+    "p90": 64.16304723814945,
+    "distress_share": 0.005
+   }
+  },
+  "AMD": {
+   "scenarios": {
+    "conservative": null,
+    "base": 42.99836641310446,
+    "optimistic": 186.05932714013
+   },
+   "status": "DATA_COMPLETE",
+   "blockers": [],
+   "degradations": [],
+   "mc": {
+    "p10": 4.480440097799511,
+    "p50": 44.46416555356788,
+    "p90": 253.64236756112226,
+    "distress_share": 0.2
+   }
+  }
+ }
+}
